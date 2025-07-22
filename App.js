@@ -9,3 +9,9 @@ export default function App() {
     </NavigationContainer>
   );
 }
+import { useEffect } from 'react';
+import { createTables } from './src/db/database';
+
+useEffect(() => {
+  createTables(); // 앱 시작 시 테이블 생성
+}, []);
