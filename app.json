@@ -1,5 +1,11 @@
 {
-  "plugins": [
-    "expo-sqlite"
-  ]
+  "expo": {
+    "name": "diet-ai-app",
+    "slug": "diet-ai-app",
+    "version": "1.0.0",
+    "sdkVersion": "53.0.0",
+    "platforms": ["ios", "android", "web"],
+    "jsEngine": "jsc",
+    "plugins": []
+  }
 }

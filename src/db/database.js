@@ -1,117 +1,71 @@
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabase('diet.db');
+console.log('SQLite 모듈:', SQLite);
 
-//  테이블 생성 (앱 처음 실행 시 1회만 호출)
+const db = SQLite.openDatabase('meals.db');
+
 export const createTables = () => {
   db.transaction(tx => {
-    // 식단 테이블
     tx.executeSql(
       `CREATE TABLE IF NOT EXISTS meals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         calories INTEGER
-      );`
-    );
-
-    // 운동 테이블
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS exercises (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        duration INTEGER
-      );`
+      );`,
+      [],
+      () => { console.log('테이블 생성 성공'); },
+      (txObj, error) => { console.error('테이블 생성 실패', error); }
     );
   });
 };
 
-// 식단 추가
-export const insertMeal = (name, calories) => {
-  db.transaction(tx => {
-    tx.executeSql(
-      'INSERT INTO meals (name, calories) VALUES (?, ?);',
-      [name, calories]
-    );
-  });
-};
+// 나머지 함수들도 위에서 만든 것처럼 작성
 
-//  운동 추가
-export const insertExercise = (name, duration) => {
-  db.transaction(tx => {
-    tx.executeSql(
-      'INSERT INTO exercises (name, duration) VALUES (?, ?);',
-      [name, duration]
-    );
-  });
-};
-
-//  식단 조회
-export const getMeals = (callback) => {
+export const getMeals = (setMeals) => {
   db.transaction(tx => {
     tx.executeSql(
       'SELECT * FROM meals;',
       [],
-      (_, { rows }) => callback(rows._array)
+      (_, { rows: { _array } }) => {
+        setMeals(_array);
+      },
+      (txObj, error) => {
+        console.error('getMeals 오류:', error);
+      }
     );
   });
 };
 
-//  운동 조회
-export const getExercises = (callback) => {
+export const deleteMeal = (id, onSuccess, onError) => {
   db.transaction(tx => {
     tx.executeSql(
-      'SELECT * FROM exercises;',
-      [],
-      (_, { rows }) => callback(rows._array)
+      'DELETE FROM meals WHERE id = ?;',
+      [id],
+      () => {
+        console.log(`id ${id} 식단 삭제 완료`);
+        if (onSuccess) onSuccess();
+      },
+      (txObj, error) => {
+        console.error('deleteMeal 오류:', error);
+        if (onError) onError(error);
+      }
     );
   });
 };
 
-// 커뮤니티 테이블
-tx.executeSql(
-  `CREATE TABLE IF NOT EXISTS posts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    content TEXT
-  );`
-);
-export const insertPost = (content) => {
+export const addMeal = (name, calories, onSuccess, onError) => {
   db.transaction(tx => {
     tx.executeSql(
-      'INSERT INTO posts (content) VALUES (?);',
-      [content]
+      'INSERT INTO meals (name, calories) VALUES (?, ?);',
+      [name, calories],
+      () => {
+        console.log('식단 추가 완료');
+        if (onSuccess) onSuccess();
+      },
+      (txObj, error) => {
+        console.error('addMeal 오류:', error);
+        if (onError) onError(error);
+      }
     );
   });
 };
-export const getPosts = (callback) => {
-  db.transaction(tx => {
-    tx.executeSql(
-      'SELECT * FROM posts ORDER BY id DESC;',
-      [],
-      (_, { rows }) => callback(rows._array)
-    );
-  });
-};
-
-
-// 식단 삭제
-export const deleteMeal = (id) => {
-  db.transaction(tx => {
-    tx.executeSql('DELETE FROM meals WHERE id = ?;', [id]);
-  });
-};
-
-// 운동 삭제
-export const deleteExercise = (id) => {
-  db.transaction(tx => {
-    tx.executeSql('DELETE FROM exercises WHERE id = ?;', [id]);
-  });
-};
-
-import { deleteMeal } from '../db/database';
-
-<TouchableOpacity onPress={() => {
-  deleteMeal(item.id);
-  loadMeals(); // 목록 갱신
-}}>
-  <Text style={{ color: 'red' }}>삭제</Text>
-</TouchableOpacity>
