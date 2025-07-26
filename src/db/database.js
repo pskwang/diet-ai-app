@@ -1,7 +1,5 @@
 import * as SQLite from 'expo-sqlite';
 
-console.log('SQLite 모듈:', SQLite);
-
 const db = SQLite.openDatabase('meals.db');
 
 export const createTables = () => {
