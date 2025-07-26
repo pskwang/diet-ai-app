@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-export default function ExerciseScreen() {
+export default function MealInputScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>운동 기록 화면</Text>
+      <Text style={styles.title}>식단 입력 화면</Text>
     </View>
   );
 }
