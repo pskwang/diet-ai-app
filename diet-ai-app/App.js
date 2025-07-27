@@ -1,17 +1,29 @@
-// App.js
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import AppNavigator from './src/navigation/AppNavigator';
-import { createTables } from './src/db/database';
+import { createStackNavigator } from '@react-navigation/stack';
+import HomeScreen from './app/index';
+import MealInput from './app/meal/input';
+import MealList from './app/meal/list';
+import ExerciseInput from './app/exercise/input';
+import ExerciseList from './app/exercise/list';
+import { createTables } from './app/db/database';
+
+const Stack = createStackNavigator();
 
 export default function App() {
   useEffect(() => {
-    createTables(); // 앱 실행 시 테이블 생성
+    createTables();
   }, []);
 
   return (
     <NavigationContainer>
-      <AppNavigator />
+      <Stack.Navigator initialRouteName="홈">
+        <Stack.Screen name="홈" component={HomeScreen} />
+        <Stack.Screen name="식단 입력" component={MealInput} />
+        <Stack.Screen name="식단 목록" component={MealList} />
+        <Stack.Screen name="운동 입력" component={ExerciseInput} />
+        <Stack.Screen name="운동 목록" component={ExerciseList} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

@@ -1,7 +1,8 @@
 // src/db/database.js
-import { openDatabase } from 'expo-sqlite'; // 이렇게 변경
+import * as SQLite from 'expo-sqlite';
 
-const db = openDatabase('meals.db'); // SQLite. 없이 바로 사용
+const db = SQLite.openDatabase('meals.db');
+
 // 한 번에 테이블 생성 함수
 export const createTables = () => {
   db.transaction(tx => {
@@ -13,7 +14,10 @@ export const createTables = () => {
       );`,
       [],
       () => console.log('meals table created or exists'),
-      (_, error) => { console.error('Error creating meals table:', error); return true; }
+      (_, error) => {
+        console.error('Error creating meals table:', error);
+        return true;
+      }
     );
 
     tx.executeSql(
@@ -25,7 +29,10 @@ export const createTables = () => {
       );`,
       [],
       () => console.log('exercises table created or exists'),
-      (_, error) => { console.error('Error creating exercises table:', error); return true; }
+      (_, error) => {
+        console.error('Error creating exercises table:', error);
+        return true;
+      }
     );
   });
 };
@@ -37,7 +44,10 @@ export const insertMeal = (name, calories, callback) => {
       'INSERT INTO meals (name, calories) VALUES (?, ?)',
       [name, calories],
       (_, result) => callback(result),
-      (_, error) => { console.error('Error inserting meal:', error); return true; }
+      (_, error) => {
+        console.error('Error inserting meal:', error);
+        return true;
+      }
     );
   });
 };
@@ -48,7 +58,10 @@ export const getMeals = (callback) => {
       'SELECT * FROM meals',
       [],
       (_, { rows: { _array } }) => callback(_array),
-      (_, error) => { console.error('Error fetching meals:', error); return true; }
+      (_, error) => {
+        console.error('Error fetching meals:', error);
+        return true;
+      }
     );
   });
 };
@@ -60,9 +73,12 @@ export const deleteMeal = (id, callback) => {
       [id],
       (_, result) => {
         console.log(`Meal ${id} deleted.`);
-        if(callback) callback(result);
+        if (callback) callback(result);
       },
-      (_, error) => { console.error('Error deleting meal:', error); return true; }
+      (_, error) => {
+        console.error('Error deleting meal:', error);
+        return true;
+      }
     );
   });
 };
@@ -74,7 +90,10 @@ export const insertExercise = (name, duration, calories, callback) => {
       'INSERT INTO exercises (name, duration, calories) VALUES (?, ?, ?)',
       [name, duration, calories],
       (_, result) => callback(result),
-      (_, error) => { console.error('Error inserting exercise:', error); return true; }
+      (_, error) => {
+        console.error('Error inserting exercise:', error);
+        return true;
+      }
     );
   });
 };
@@ -85,7 +104,10 @@ export const getExercises = (callback) => {
       'SELECT * FROM exercises',
       [],
       (_, { rows: { _array } }) => callback(_array),
-      (_, error) => { console.error('Error fetching exercises:', error); return true; }
+      (_, error) => {
+        console.error('Error fetching exercises:', error);
+        return true;
+      }
     );
   });
 };
@@ -97,9 +119,12 @@ export const deleteExercise = (id, callback) => {
       [id],
       (_, result) => {
         console.log(`Exercise ${id} deleted.`);
-        if(callback) callback(result);
+        if (callback) callback(result);
       },
-      (_, error) => { console.error('Error deleting exercise:', error); return true; }
+      (_, error) => {
+        console.error('Error deleting exercise:', error);
+        return true;
+      }
     );
   });
 };
