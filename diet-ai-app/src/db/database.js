@@ -1,8 +1,7 @@
 // src/db/database.js
-import * as SQLite from 'expo-sqlite';
+import { openDatabase } from 'expo-sqlite'; // 이렇게 변경
 
-const db = SQLite.openDatabase('meals.db');
-
+const db = openDatabase('meals.db'); // SQLite. 없이 바로 사용
 // 한 번에 테이블 생성 함수
 export const createTables = () => {
   db.transaction(tx => {
