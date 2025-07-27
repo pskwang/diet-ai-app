@@ -3,6 +3,7 @@ import * as SQLite from 'expo-sqlite';
 
 const db = SQLite.openDatabase('meals.db');
 
+// 한 번에 테이블 생성 함수
 export const createTables = () => {
   db.transaction(tx => {
     tx.executeSql(
@@ -10,18 +11,34 @@ export const createTables = () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         calories INTEGER
-      );`
+      );`,
+      [],
+      () => console.log('meals table created or exists'),
+      (_, error) => { console.error('Error creating meals table:', error); return true; }
+    );
+
+    tx.executeSql(
+      `CREATE TABLE IF NOT EXISTS exercises (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        duration INTEGER,
+        calories INTEGER
+      );`,
+      [],
+      () => console.log('exercises table created or exists'),
+      (_, error) => { console.error('Error creating exercises table:', error); return true; }
     );
   });
 };
 
+// meals 관련 함수
 export const insertMeal = (name, calories, callback) => {
   db.transaction(tx => {
     tx.executeSql(
       'INSERT INTO meals (name, calories) VALUES (?, ?)',
       [name, calories],
       (_, result) => callback(result),
-      (_, error) => console.error(error)
+      (_, error) => { console.error('Error inserting meal:', error); return true; }
     );
   });
 };
@@ -32,67 +49,58 @@ export const getMeals = (callback) => {
       'SELECT * FROM meals',
       [],
       (_, { rows: { _array } }) => callback(_array),
-      (_, error) => console.error(error)
+      (_, error) => { console.error('Error fetching meals:', error); return true; }
     );
   });
 };
 
-export const deleteMeal = (id) => {
+export const deleteMeal = (id, callback) => {
   db.transaction(tx => {
     tx.executeSql(
       'DELETE FROM meals WHERE id = ?',
       [id],
-      () => console.log(`Meal ${id} deleted.`),
-      (_, error) => console.error(error)
-    );
-  });
-};
-// 운동 테이블도 만들기
-export const createExerciseTable = () => {
-  db.transaction(tx => {
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS exercises (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        duration INTEGER,
-        calories INTEGER
-      );`
+      (_, result) => {
+        console.log(`Meal ${id} deleted.`);
+        if(callback) callback(result);
+      },
+      (_, error) => { console.error('Error deleting meal:', error); return true; }
     );
   });
 };
 
-// 운동 추가
+// exercises 관련 함수
 export const insertExercise = (name, duration, calories, callback) => {
   db.transaction(tx => {
     tx.executeSql(
       'INSERT INTO exercises (name, duration, calories) VALUES (?, ?, ?)',
       [name, duration, calories],
       (_, result) => callback(result),
-      (_, error) => console.error(error)
+      (_, error) => { console.error('Error inserting exercise:', error); return true; }
     );
   });
 };
 
-// 운동 불러오기
 export const getExercises = (callback) => {
   db.transaction(tx => {
     tx.executeSql(
       'SELECT * FROM exercises',
       [],
       (_, { rows: { _array } }) => callback(_array),
-      (_, error) => console.error(error)
+      (_, error) => { console.error('Error fetching exercises:', error); return true; }
     );
   });
 };
 
-// 운동 삭제
-export const deleteExercise = (id) => {
+export const deleteExercise = (id, callback) => {
   db.transaction(tx => {
     tx.executeSql(
       'DELETE FROM exercises WHERE id = ?',
       [id],
-      () => console.log(`Exercise ${id} deleted.`),
-      (_, error) => console.error(error)
+      (_, result) => {
+        console.log(`Exercise ${id} deleted.`);
+        if(callback) callback(result);
+      },
+      (_, error) => { console.error('Error deleting exercise:', error); return true; }
     );
   });
 };

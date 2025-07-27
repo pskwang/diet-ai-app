@@ -8,9 +8,10 @@ export default function HomeScreen({ navigation }) {
       <Button title="식단 입력" onPress={() => navigation.navigate('식단 입력')} />
       <View style={{ height: 20 }} />
       <Button title="식단 목록" onPress={() => navigation.navigate('식단 목록')} />
+      <View style={{ height: 20 }} />
+      <Button title="운동 입력" onPress={() => navigation.navigate('운동 입력')} />
+      <View style={{ height: 20 }} />
+      <Button title="운동 목록" onPress={() => navigation.navigate('운동 목록')} />
     </View>
   );
 }
-<Button title="운동 입력" onPress={() => navigation.navigate('운동 입력')} />
-<View style={{ height: 20 }} />
-<Button title="운동 목록" onPress={() => navigation.navigate('운동 목록')} />
