@@ -6,7 +6,7 @@ import MealInput from './app/meal/input';
 import MealList from './app/meal/list';
 import ExerciseInput from './app/exercise/input';
 import ExerciseList from './app/exercise/list';
-import { createTables } from './app/db/database';
+import { createTables } from './src/db/database';
 
 const Stack = createStackNavigator();
 
