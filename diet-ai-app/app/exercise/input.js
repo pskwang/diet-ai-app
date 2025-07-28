@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button } from 'react-native';
-import { insertExercise } from '../db/database';
+import { insertExercise } from '../../src/db/database';
 
 export default function ExerciseInputScreen() {
   const [name, setName] = useState('');

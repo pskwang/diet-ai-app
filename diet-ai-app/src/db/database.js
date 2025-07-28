@@ -1,9 +1,8 @@
-// src/db/database.js
 import * as SQLite from 'expo-sqlite';
 
 const db = SQLite.openDatabase('meals.db');
 
-// 한 번에 테이블 생성 함수
+// 테이블 생성 함수
 export const createTables = () => {
   db.transaction(tx => {
     tx.executeSql(
@@ -66,6 +65,7 @@ export const getMeals = (callback) => {
   });
 };
 
+// 삭제 함수: 콜백 추가
 export const deleteMeal = (id, callback) => {
   db.transaction(tx => {
     tx.executeSql(
@@ -112,6 +112,7 @@ export const getExercises = (callback) => {
   });
 };
 
+// 삭제 함수: 콜백 추가
 export const deleteExercise = (id, callback) => {
   db.transaction(tx => {
     tx.executeSql(

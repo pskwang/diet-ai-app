@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button } from 'react-native';
-import { insertMeal } from '../db/database';
+import { insertMeal } from '../../src/db/database';
 
 export default function MealInputScreen() {
   const [name, setName] = useState('');

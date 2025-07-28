@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Button } from 'react-native';
 import { useRouter } from 'expo-router';
-import { createTables } from './db/database'; // db 위치 확인!
+import { createTables } from '../src/db/database'; // db 위치 확인!
 
 export default function Home() {
   const router = useRouter();

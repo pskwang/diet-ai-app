@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "dietaiapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },
@@ -16,6 +15,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "jsEngine":"jsc",
       "edgeToEdgeEnabled": true
     },
     "web": {
