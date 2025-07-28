@@ -1,7 +1,6 @@
-// src/db/database.js 파일 상단 변경
 import { openDatabase } from 'expo-sqlite';
 
-// 그리고 db 변수 선언 시 openDatabase를 바로 사용
+// 그리고 아래에서 db를 선언할 때:
 const db = openDatabase('diet_ai_app.db');
 export const initDatabase = () => {
   return new Promise((resolve, reject) => {
