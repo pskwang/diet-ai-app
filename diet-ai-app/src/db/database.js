@@ -16,6 +16,16 @@ export const initDatabase = async () => {
 
     // PRAGMA journal_mode = WAL; 설정은 성능 향상에 도움이 됩니다.
     await db.execAsync(`PRAGMA journal_mode = WAL;`);
+    // user_info 테이블 생성 (초기 1회만 입력, 단일 행만 유지)
+await db.runAsync(
+  `CREATE TABLE IF NOT EXISTS user_info (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    height REAL NOT NULL,
+    weight REAL NOT NULL,
+    body_type TEXT
+  );`
+);
+console.log('User Info table created or already exists.');
 
     // 트랜잭션 내에서 테이블 생성 작업을 수행합니다.
     await db.withTransactionAsync(async () => {
@@ -28,6 +38,7 @@ export const initDatabase = async () => {
           duration INTEGER,
           calories INTEGER
         );`
+        
       );
       console.log('Exercises table created or already exists.');
 
@@ -177,6 +188,47 @@ export const deleteMeal = async (id) => {
     return result.rowsAffected;
   } catch (error) {
     console.error('Error deleting meal:', error);
+    throw error;
+  }
+};
+/**
+ * 사용자 정보를 저장합니다. 기존 정보가 있으면 업데이트합니다.
+ * @param {number} height - 키 (cm)
+ * @param {number} weight - 몸무게 (kg)
+ * @param {string} bodyType - 체형 (예: 마른, 보통, 통통 등)
+ * @returns {Promise<void>}
+ */
+export const setUserInfo = async (height, weight, bodyType) => {
+  if (!db) throw new Error('Database not initialized. Call initDatabase() first.');
+  try {
+    const existing = await db.getFirstAsync(`SELECT * FROM user_info LIMIT 1;`);
+    if (existing) {
+      await db.runAsync(
+        `UPDATE user_info SET height = ?, weight = ?, body_type = ? WHERE id = ?;`,
+        [height, weight, bodyType, existing.id]
+      );
+    } else {
+      await db.runAsync(
+        `INSERT INTO user_info (height, weight, body_type) VALUES (?, ?, ?);`,
+        [height, weight, bodyType]
+      );
+    }
+  } catch (error) {
+    console.error('Error saving user info:', error);
+    throw error;
+  }
+};
+/**
+ * 사용자 정보를 가져옵니다.
+ * @returns {Promise<Object|null>} 사용자 정보 객체 또는 null
+ */
+export const getUserInfo = async () => {
+  if (!db) throw new Error('Database not initialized. Call initDatabase() first.');
+  try {
+    const result = await db.getFirstAsync(`SELECT * FROM user_info LIMIT 1;`);
+    return result || null;
+  } catch (error) {
+    console.error('Error getting user info:', error);
     throw error;
   }
 };
