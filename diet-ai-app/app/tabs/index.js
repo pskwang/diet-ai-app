@@ -45,12 +45,10 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* 여기에 오늘 먹은 양, 운동량, 그래프 등을 추가 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>오늘의 기록</Text>
         <Text style={styles.sectionContent}>
           이 부분에 오늘 섭취 칼로리, 운동 소모 칼로리 등을 표시합니다.
-          (예: 식사: 1500 kcal, 운동: 300 kcal)
         </Text>
       </View>
       
@@ -59,15 +57,6 @@ export default function HomeScreen() {
         <Text style={styles.sectionContent}>
           여기에 지난 기록과 비교하는 그래프를 표시합니다.
         </Text>
-      </View>
-
-      <View style={styles.buttonGroup}>
-        <Link href="/exercise/input" asChild>
-          <Button title="운동 기록 추가" />
-        </Link>
-        <Link href="/meal/input" asChild>
-          <Button title="식사 기록 추가" />
-        </Link>
       </View>
     </SafeAreaView>
   );

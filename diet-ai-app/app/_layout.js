@@ -16,7 +16,7 @@ export default function RootLayout() {
           setHasUserInfo(true);
         }
       } catch (err) {
-        console.error('App setup failed:', err);
+        console.error('앱 설정 오류:', err);
       } finally {
         setLoading(false);
       }
@@ -33,14 +33,13 @@ export default function RootLayout() {
     );
   }
 
+  // 사용자 정보가 없으면 온보딩, 있으면 탭 화면을 보여줍니다.
+  const initialRoute = hasUserInfo ? 'tabs' : 'onboarding';
+
   return (
-    <Stack>
-      {/* 사용자 정보가 없으면 온보딩 화면으로, 있으면 (tabs)로 이동 */}
-      {hasUserInfo ? (
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      ) : (
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-      )}
+    <Stack initialRouteName={initialRoute}>
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      <Stack.Screen name="tabs" options={{ headerShown: false }} />
       <Stack.Screen name="exercise/input" options={{ presentation: 'modal', title: '운동 기록 추가' }} />
       <Stack.Screen name="meal/input" options={{ presentation: 'modal', title: '식사 기록 추가' }} />
     </Stack>

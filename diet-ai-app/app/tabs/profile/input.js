@@ -6,6 +6,7 @@ import { setUserInfo, getUserInfo } from '../../../src/db/database';
 export default function ProfileInputScreen() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
+  const [targetWeight, setTargetWeight] = useState('');
   const [selectedGender, setSelectedGender] = useState('');
   const [selectedBodyType, setSelectedBodyType] = useState('');
   const [selectedGoal, setSelectedGoal] = useState('');
@@ -22,12 +23,13 @@ export default function ProfileInputScreen() {
     try {
       const user = await getUserInfo();
       if (user) {
-        setHeight(user.height.toString());
-        setWeight(user.weight.toString());
-        setSelectedGender(user.gender);
-        setSelectedBodyType(user.body_type);
-        setSelectedGoal(user.goal);
-        setSelectedPeriod(user.period);
+        setHeight(user.height?.toString() || '');
+        setWeight(user.weight?.toString() || '');
+        setTargetWeight(user.target_weight?.toString() || '');
+        setSelectedGender(user.gender || '');
+        setSelectedBodyType(user.body_type || '');
+        setSelectedGoal(user.goal || '');
+        setSelectedPeriod(user.period || '');
       }
     } catch (error) {
       console.error('프로필 정보 로드 오류:', error);
@@ -41,7 +43,7 @@ export default function ProfileInputScreen() {
   );
 
   const handleSave = async () => {
-    if (!height || !weight || !selectedGender || !selectedBodyType || !selectedGoal || !selectedPeriod) {
+    if (!height || !weight || !targetWeight || !selectedGender || !selectedBodyType || !selectedGoal || !selectedPeriod) {
       Alert.alert('모든 정보를 입력해주세요.');
       return;
     }
@@ -49,6 +51,7 @@ export default function ProfileInputScreen() {
       await setUserInfo(
         Number(height),
         Number(weight),
+        Number(targetWeight),
         selectedGender,
         selectedBodyType,
         selectedGoal,
@@ -99,6 +102,15 @@ export default function ProfileInputScreen() {
         value={weight}
         onChangeText={setWeight}
         placeholder="예: 70"
+      />
+
+      <Text style={styles.label}>목표 몸무게 (kg):</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+        value={targetWeight}
+        onChangeText={setTargetWeight}
+        placeholder="예: 65"
       />
       
       <Text style={styles.label}>성별:</Text>

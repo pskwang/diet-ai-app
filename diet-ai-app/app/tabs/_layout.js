@@ -15,20 +15,20 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="exercise/list" // 운동 목록을 탭에 직접 연결
-        options={{
-          title: '운동',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="dumbbell" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="meal/list" // 식사 목록을 탭에 직접 연결
+        name="meal/list"
         options={{
           title: '식단',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="food-apple" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="exercise/list"
+        options={{
+          title: '운동',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="dumbbell" color={color} size={size} />
           ),
         }}
       />
@@ -42,7 +42,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile/input" // 프로필 수정 화면을 탭에 직접 연결
+        name="profile/input"
         options={{
           title: '프로필',
           tabBarIcon: ({ color, size }) => (

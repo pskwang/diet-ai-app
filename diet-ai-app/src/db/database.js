@@ -7,6 +7,8 @@ let db;
  */
 export const initDatabase = async () => {
   try {
+    // 데이터베이스를 열기 전에 삭제하여 스키마 변경을 반영합니다.
+    await SQLite.deleteDatabaseAsync('diet_ai_app.db');
     db = await SQLite.openDatabaseAsync('diet_ai_app.db');
     console.log('Database opened successfully.');
     await db.execAsync(`PRAGMA journal_mode = WAL;`);
@@ -17,6 +19,7 @@ export const initDatabase = async () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         height REAL NOT NULL,
         weight REAL NOT NULL,
+        target_weight REAL,
         gender TEXT,
         body_type TEXT,
         goal TEXT,
@@ -159,19 +162,19 @@ export const deleteMeal = async (id) => {
 /**
  * 사용자 정보를 저장합니다. 기존 정보가 있으면 업데이트합니다.
  */
-export const setUserInfo = async (height, weight, gender, bodyType, goal, period) => {
+export const setUserInfo = async (height, weight, targetWeight, gender, bodyType, goal, period) => {
   if (!db) throw new Error('Database not initialized.');
   try {
     const existing = await db.getFirstAsync(`SELECT * FROM user_info LIMIT 1;`);
     if (existing) {
       await db.runAsync(
-        `UPDATE user_info SET height = ?, weight = ?, gender = ?, body_type = ?, goal = ?, period = ? WHERE id = ?;`,
-        [height, weight, gender, bodyType, goal, period, existing.id]
+        `UPDATE user_info SET height = ?, weight = ?, target_weight = ?, gender = ?, body_type = ?, goal = ?, period = ? WHERE id = ?;`,
+        [height, weight, targetWeight, gender, bodyType, goal, period, existing.id]
       );
     } else {
       await db.runAsync(
-        `INSERT INTO user_info (height, weight, gender, body_type, goal, period) VALUES (?, ?, ?, ?, ?, ?);`,
-        [height, weight, gender, bodyType, goal, period]
+        `INSERT INTO user_info (height, weight, target_weight, gender, body_type, goal, period) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+        [height, weight, targetWeight, gender, bodyType, goal, period]
       );
     }
   } catch (error) {

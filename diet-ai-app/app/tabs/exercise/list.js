@@ -1,7 +1,7 @@
 // app/exercise/list.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, Button, Alert } from 'react-native';
-import { getExercises, deleteExercise } from '../../src/db/database'; // database.js 파일 경로에 맞게 조정
+import { getExercises, deleteExercise } from '../../../src/db/database'; // database.js 파일 경로에 맞게 조정
 import { useFocusEffect } from 'expo-router'; // expo-router v2 이상에서 화면 포커스 시 데이터 새로고침
 
 export default function ExerciseListScreen() {

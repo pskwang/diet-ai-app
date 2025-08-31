@@ -6,6 +6,7 @@ import { setUserInfo } from '../src/db/database';
 export default function OnboardingScreen() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
+  const [targetWeight, setTargetWeight] = useState(''); // 목표 몸무게 추가
   const [selectedGender, setSelectedGender] = useState('');
   const [selectedBodyType, setSelectedBodyType] = useState('');
   const [selectedGoal, setSelectedGoal] = useState('');
@@ -19,8 +20,8 @@ export default function OnboardingScreen() {
   const periodOptions = ['3~4개월', '5~6개월', '7개월 이상'];
 
   const handleSave = async () => {
-    if (!height || !weight || !selectedGender || !selectedBodyType || !selectedGoal || !selectedPeriod) {
-      Alert.alert('모든 정보를 입력해주세요.');
+    if (!height || !weight || !targetWeight || !selectedGender || !selectedBodyType || !selectedGoal || !selectedPeriod) {
+      Alert.alert('오류', '모든 정보를 입력해주세요.');
       return;
     }
 
@@ -28,13 +29,14 @@ export default function OnboardingScreen() {
       await setUserInfo(
         Number(height),
         Number(weight),
+        Number(targetWeight), // 목표 몸무게 추가
         selectedGender,
         selectedBodyType,
         selectedGoal,
         selectedPeriod
       );
       Alert.alert('저장 완료', '메인 화면으로 이동합니다.');
-      router.replace('/(tabs)');
+      router.replace('/tabs');
     } catch (err) {
       Alert.alert('저장 실패', err.message);
     }
@@ -79,6 +81,15 @@ export default function OnboardingScreen() {
         value={weight}
         onChangeText={setWeight}
         placeholder="예: 70"
+      />
+
+      <Text style={styles.label}>목표 몸무게 (kg):</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+        value={targetWeight}
+        onChangeText={setTargetWeight}
+        placeholder="예: 65"
       />
       
       <Text style={styles.label}>성별:</Text>

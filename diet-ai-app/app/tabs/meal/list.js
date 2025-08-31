@@ -1,7 +1,7 @@
 // app/meal/list.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, Button, Alert } from 'react-native';
-import { getMeals, deleteMeal } from '../../src/db/database';
+import { getMeals, deleteMeal } from '../../../src/db/database';
 import { useFocusEffect } from 'expo-router';
 
 export default function MealListScreen() {
