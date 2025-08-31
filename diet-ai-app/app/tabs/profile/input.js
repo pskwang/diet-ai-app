@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
-import { setUserInfo } from '../src/db/database';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { setUserInfo, getUserInfo } from '../../../src/db/database'; // 경로 수정
 
-export default function OnboardingScreen() {
+export default function ProfileInputScreen() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [selectedGender, setSelectedGender] = useState('');
@@ -18,12 +18,33 @@ export default function OnboardingScreen() {
   const goalOptions = ['다이어트', '벌크업', '유지'];
   const periodOptions = ['3~4개월', '5~6개월', '7개월 이상'];
 
+  const fetchCurrentInfo = async () => {
+    try {
+      const user = await getUserInfo();
+      if (user) {
+        setHeight(user.height.toString());
+        setWeight(user.weight.toString());
+        setSelectedGender(user.gender);
+        setSelectedBodyType(user.body_type);
+        setSelectedGoal(user.goal);
+        setSelectedPeriod(user.period);
+      }
+    } catch (error) {
+      console.error('프로필 정보 로드 오류:', error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchCurrentInfo();
+    }, [])
+  );
+
   const handleSave = async () => {
     if (!height || !weight || !selectedGender || !selectedBodyType || !selectedGoal || !selectedPeriod) {
       Alert.alert('모든 정보를 입력해주세요.');
       return;
     }
-
     try {
       await setUserInfo(
         Number(height),
@@ -33,8 +54,7 @@ export default function OnboardingScreen() {
         selectedGoal,
         selectedPeriod
       );
-      Alert.alert('저장 완료', '메인 화면으로 이동합니다.');
-      router.replace('/(tabs)');
+      Alert.alert('저장 완료', '프로필 정보가 수정되었습니다.');
     } catch (err) {
       Alert.alert('저장 실패', err.message);
     }
@@ -61,7 +81,7 @@ export default function OnboardingScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>당신의 다이어트 목표를 설정해주세요!</Text>
+      <Text style={styles.title}>프로필 정보 수정</Text>
       
       <Text style={styles.label}>키 (cm):</Text>
       <TextInput
@@ -93,7 +113,7 @@ export default function OnboardingScreen() {
       <Text style={styles.label}>목표 기간:</Text>
       {renderOptionButtons(periodOptions, selectedPeriod, setSelectedPeriod)}
 
-      <Button title="저장하고 시작하기" onPress={handleSave} />
+      <Button title="저장하기" onPress={handleSave} />
     </ScrollView>
   );
 }
