@@ -1,4 +1,3 @@
-// 파일 경로: app/(tabs)/chat/index.js
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 

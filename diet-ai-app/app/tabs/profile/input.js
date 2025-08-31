@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { setUserInfo, getUserInfo } from '../../../src/db/database'; // 경로 수정
+import { setUserInfo, getUserInfo } from '../../../src/db/database';
 
 export default function ProfileInputScreen() {
   const [height, setHeight] = useState('');
