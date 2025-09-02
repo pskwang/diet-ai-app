@@ -1,18 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, Button } from 'react-native';
-import { getUserInfo } from '../../src/db/database';
+import { getUserInfo, getExercises, getMeals } from '../../src/db/database';
 import { useFocusEffect, Link } from 'expo-router';
 
 export default function HomeScreen() {
   const [userInfo, setUserInfo] = useState(null);
+  const [exercises, setExercises] = useState([]);
+  const [meals, setMeals] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserInfo = async () => {
+  const fetchAllData = async () => {
     try {
+      setLoading(true);
       const user = await getUserInfo();
+      const fetchedExercises = await getExercises();
+      const fetchedMeals = await getMeals();
+
       setUserInfo(user);
+      setExercises(fetchedExercises);
+      setMeals(fetchedMeals);
     } catch (error) {
-      console.error('사용자 정보 로드 오류:', error);
+      console.error('데이터 로드 오류:', error);
     } finally {
       setLoading(false);
     }
@@ -20,9 +28,21 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchUserInfo();
+      fetchAllData();
     }, [])
   );
+
+  const getTodaysData = (data) => {
+    const today = new Date().toISOString().split('T')[0];
+    return data.filter(item => item.date === today);
+  };
+
+  const todaysExercises = getTodaysData(exercises);
+  const todaysMeals = getTodaysData(meals);
+
+  const totalCalories = todaysMeals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
+  const totalExerciseCalories = todaysExercises.reduce((sum, exercise) => sum + (exercise.calories || 0), 0);
+  const totalExerciseDuration = todaysExercises.reduce((sum, exercise) => sum + (exercise.duration || 0), 0);
 
   if (loading) {
     return (
@@ -48,7 +68,10 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>오늘의 기록</Text>
         <Text style={styles.sectionContent}>
-          이 부분에 오늘 섭취 칼로리, 운동 소모 칼로리 등을 표시합니다.
+          {todaysMeals.length > 0 ? `섭취 칼로리: ${totalCalories} kcal` : '오늘 식사 기록이 없습니다.'}
+        </Text>
+        <Text style={styles.sectionContent}>
+          {todaysExercises.length > 0 ? `운동 시간: ${totalExerciseDuration}분, 소모 칼로리: ${totalExerciseCalories} kcal` : '오늘 운동 기록이 없습니다.'}
         </Text>
       </View>
       

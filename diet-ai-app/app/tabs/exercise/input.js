@@ -14,7 +14,11 @@ export default function ExerciseInputScreen() {
   const [sets, setSets] = useState('');
   const [reps, setReps] = useState('');
   const [weight, setWeight] = useState('');
-  const [exerciseType, setExerciseType] = useState('유산소'); // '유산소' or '무산소'
+  const [distance, setDistance] = useState('');
+  const [incline, setIncline] = useState('');
+  const [speed, setSpeed] = useState('');
+  const [level, setLevel] = useState('');
+  const [exerciseType, setExerciseType] = useState('유산소');
   const [muscleGroup, setMuscleGroup] = useState('가슴');
   const router = useRouter();
 
@@ -32,22 +36,35 @@ export default function ExerciseInputScreen() {
 
   const handleAddExercise = async () => {
     if (exerciseType === '유산소') {
-      if (!type || !duration || !calories) {
-        Alert.alert('오류', '모든 필드를 입력해주세요.');
+      if (!type) {
+        Alert.alert('오류', '운동 종류를 선택해주세요.');
         return;
       }
-      try {
-        const parsedDuration = parseInt(duration, 10);
-        const parsedCalories = parseInt(calories, 10);
-        if (isNaN(parsedDuration) || isNaN(parsedCalories) || parsedDuration <= 0 || parsedCalories <= 0) {
-          Alert.alert('오류', '지속 시간과 칼로리는 유효한 양의 숫자를 입력해주세요.');
+      // 유산소 운동별 유효성 검사 및 데이터 저장 로직
+      if (type === '산책') {
+        if (!duration || !distance) {
+          Alert.alert('오류', '지속 시간과 거리를 입력해주세요.');
           return;
         }
-        await addExercise(formattedDate, type, parsedDuration, parsedCalories);
-        Alert.alert('성공', '운동 기록이 추가되었습니다.');
-      } catch (error) {
-        console.error('운동 기록 추가 오류:', error);
-        Alert.alert('오류', '운동 기록 추가에 실패했습니다: ' + error.message);
+        await addExercise(formattedDate, type, parseInt(duration, 10), 0, parseFloat(distance), 0, 0, 0, 0, 0, 0);
+        Alert.alert('성공', '산책 기록이 추가되었습니다.');
+      } else if (type === '런닝머신') {
+        if (!duration || !incline || !speed || !calories) {
+          Alert.alert('오류', '지속 시간, 기울기, 속도, 칼로리를 입력해주세요.');
+          return;
+        }
+        await addExercise(formattedDate, type, parseInt(duration, 10), parseInt(calories, 10), 0, parseFloat(incline), parseFloat(speed), 0, 0, 0, 0);
+        Alert.alert('성공', '런닝머신 기록이 추가되었습니다.');
+      } else if (type === '자전거') {
+        if (!duration || !level || !calories) {
+          Alert.alert('오류', '지속 시간, 레벨, 칼로리를 입력해주세요.');
+          return;
+        }
+        await addExercise(formattedDate, type, parseInt(duration, 10), parseInt(calories, 10), 0, 0, 0, parseInt(level, 10), 0, 0, 0);
+        Alert.alert('성공', '자전거 기록이 추가되었습니다.');
+      } else {
+        Alert.alert('오류', '유효한 유산소 운동 종류를 선택해주세요.');
+        return;
       }
     } else { // 무산소
       if (!type || !sets || !reps || !weight) {
@@ -55,7 +72,8 @@ export default function ExerciseInputScreen() {
         return;
       }
       try {
-        Alert.alert('오류', '무산소 운동 추가 기능은 아직 구현되지 않았습니다. database.js 파일을 수정해야 합니다.');
+        await addExercise(formattedDate, type, 0, 0, 0, 0, 0, 0, parseInt(sets, 10), parseInt(reps, 10), parseFloat(weight));
+        Alert.alert('성공', '무산소 운동 기록이 추가되었습니다.');
       } catch (error) {
         console.error('무산소 운동 기록 추가 오류:', error);
         Alert.alert('오류', '무산소 운동 기록 추가에 실패했습니다: ' + error.message);
@@ -65,11 +83,21 @@ export default function ExerciseInputScreen() {
     setType('');
     setDuration('');
     setCalories('');
+    setDistance('');
+    setIncline('');
+    setSpeed('');
+    setLevel('');
     setSets('');
     setReps('');
     setWeight('');
     router.back();
   };
+
+  const aerobicIcons = [
+    { name: '산책', icon: 'walk', guide: '가벼운 속도로 걸으면서 유산소 운동을 합니다.' },
+    { name: '런닝머신', icon: 'treadmill', guide: '실내에서 런닝머신을 사용해 유산소 운동을 합니다.' },
+    { name: '자전거', icon: 'bike', guide: '실내/외 자전거를 사용해 유산소 운동을 합니다.' },
+  ];
 
   const exerciseByMuscleGroup = {
     가슴: [
@@ -122,13 +150,19 @@ export default function ExerciseInputScreen() {
         <View style={styles.typeContainer}>
           <TouchableOpacity
             style={[styles.typeButton, exerciseType === '유산소' && styles.selectedTypeButton]}
-            onPress={() => setExerciseType('유산소')}
+            onPress={() => {
+              setExerciseType('유산소');
+              setType('');
+            }}
           >
             <Text style={[styles.typeText, exerciseType === '유산소' && styles.selectedTypeText]}>유산소</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.typeButton, exerciseType === '무산소' && styles.selectedTypeButton]}
-            onPress={() => setExerciseType('무산소')}
+            onPress={() => {
+              setExerciseType('무산소');
+              setType('');
+            }}
           >
             <Text style={[styles.typeText, exerciseType === '무산소' && styles.selectedTypeText]}>무산소</Text>
           </TouchableOpacity>
@@ -156,28 +190,115 @@ export default function ExerciseInputScreen() {
         {exerciseType === '유산소' ? (
           <>
             <Text style={styles.label}>운동 종류:</Text>
-            <TextInput
-              style={styles.input}
-              value={type}
-              onChangeText={setType}
-              placeholder="예: 런닝, 자전거"
-            />
-            <Text style={styles.label}>지속 시간 (분):</Text>
-            <TextInput
-              style={styles.input}
-              value={duration}
-              onChangeText={setDuration}
-              keyboardType="numeric"
-              placeholder="예: 30"
-            />
-            <Text style={styles.label}>소모 칼로리 (kcal):</Text>
-            <TextInput
-              style={styles.input}
-              value={calories}
-              onChangeText={setCalories}
-              keyboardType="numeric"
-              placeholder="예: 300"
-            />
+            <View style={styles.iconContainer}>
+              {aerobicIcons.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.iconButton, type === item.name && styles.selectedIconButton]}
+                  onPress={() => {
+                    setType(item.name);
+                    setDuration('');
+                    setCalories('');
+                    setDistance('');
+                    setIncline('');
+                    setSpeed('');
+                    setLevel('');
+                  }}
+                >
+                  <MaterialCommunityIcons name={item.icon} size={30} color={type === item.name ? '#fff' : '#007AFF'} />
+                  <Text style={styles.iconText}>{item.name}</Text>
+                  <Text style={styles.guideText}>{item.guide}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            {type === '산책' && (
+              <>
+                <Text style={styles.label}>지속 시간 (분):</Text>
+                <TextInput
+                  style={styles.input}
+                  value={duration}
+                  onChangeText={setDuration}
+                  keyboardType="numeric"
+                  placeholder="예: 30"
+                />
+                <Text style={styles.label}>거리 (km):</Text>
+                <TextInput
+                  style={styles.input}
+                  value={distance}
+                  onChangeText={setDistance}
+                  keyboardType="numeric"
+                  placeholder="예: 2.5"
+                />
+              </>
+            )}
+
+            {type === '런닝머신' && (
+              <>
+                <Text style={styles.label}>지속 시간 (분):</Text>
+                <TextInput
+                  style={styles.input}
+                  value={duration}
+                  onChangeText={setDuration}
+                  keyboardType="numeric"
+                  placeholder="예: 30"
+                />
+                <Text style={styles.label}>기울기 (%):</Text>
+                <TextInput
+                  style={styles.input}
+                  value={incline}
+                  onChangeText={setIncline}
+                  keyboardType="numeric"
+                  placeholder="예: 5"
+                />
+                <Text style={styles.label}>속도 (km/h):</Text>
+                <TextInput
+                  style={styles.input}
+                  value={speed}
+                  onChangeText={setSpeed}
+                  keyboardType="numeric"
+                  placeholder="예: 8"
+                />
+                <Text style={styles.label}>소모 칼로리 (kcal):</Text>
+                <TextInput
+                  style={styles.input}
+                  value={calories}
+                  onChangeText={setCalories}
+                  keyboardType="numeric"
+                  placeholder="예: 300"
+                />
+              </>
+            )}
+
+            {type === '자전거' && (
+              <>
+                <Text style={styles.label}>지속 시간 (분):</Text>
+                <TextInput
+                  style={styles.input}
+                  value={duration}
+                  onChangeText={setDuration}
+                  keyboardType="numeric"
+                  placeholder="예: 30"
+                />
+                <Text style={styles.label}>레벨:</Text>
+                <TextInput
+                  style={styles.input}
+                  value={level}
+                  onChangeText={setLevel}
+                  keyboardType="numeric"
+                  placeholder="예: 7"
+                />
+                <Text style={styles.label}>소모 칼로리 (kcal):</Text>
+                <TextInput
+                  style={styles.input}
+                  value={calories}
+                  onChangeText={setCalories}
+                  keyboardType="numeric"
+                  placeholder="예: 250"
+                />
+              </>
+            )}
+
           </>
         ) : (
           <>

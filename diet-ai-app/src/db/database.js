@@ -7,8 +7,9 @@ let db;
  */
 export const initDatabase = async () => {
   try {
+    // db = await SQLite.openDatabaseAsync('diet_ai_app.db');
     // 데이터베이스를 열기 전에 삭제하여 스키마 변경을 반영합니다.
-    await SQLite.deleteDatabaseAsync('diet_ai_app.db');
+    // await SQLite.deleteDatabaseAsync('diet_ai_app.db');
     db = await SQLite.openDatabaseAsync('diet_ai_app.db');
     console.log('Database opened successfully.');
     await db.execAsync(`PRAGMA journal_mode = WAL;`);
@@ -28,14 +29,21 @@ export const initDatabase = async () => {
     );
     console.log('User Info table created or already exists.');
 
-    // exercises 테이블 생성
+    // exercises 테이블 스키마 변경 (새로운 필드 추가)
     await db.runAsync(
       `CREATE TABLE IF NOT EXISTS exercises (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date TEXT NOT NULL,
         type TEXT NOT NULL,
         duration INTEGER,
-        calories INTEGER
+        calories INTEGER,
+        distance REAL,
+        incline REAL,
+        speed REAL,
+        level INTEGER,
+        sets INTEGER,
+        reps INTEGER,
+        weight REAL
       );`
     );
     console.log('Exercises table created or already exists.');
@@ -66,12 +74,12 @@ export const initDatabase = async () => {
 /**
  * 운동 기록을 추가합니다.
  */
-export const addExercise = async (date, type, duration, calories) => {
+export const addExercise = async (date, type, duration, calories, distance, incline, speed, level, sets, reps, weight) => {
   if (!db) throw new Error('Database not initialized.');
   try {
     const result = await db.runAsync(
-      `INSERT INTO exercises (date, type, duration, calories) VALUES (?, ?, ?, ?);`,
-      [date, type, duration, calories]
+      `INSERT INTO exercises (date, type, duration, calories, distance, incline, speed, level, sets, reps, weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [date, type, duration, calories, distance, incline, speed, level, sets, reps, weight]
     );
     return result.lastInsertRowId;
   } catch (error) {

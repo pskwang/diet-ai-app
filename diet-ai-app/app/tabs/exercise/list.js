@@ -1,11 +1,12 @@
-// app/exercise/list.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Button, Alert } from 'react-native';
-import { getExercises, deleteExercise } from '../../../src/db/database'; // database.js 파일 경로에 맞게 조정
-import { useFocusEffect } from 'expo-router'; // expo-router v2 이상에서 화면 포커스 시 데이터 새로고침
+import { View, Text, FlatList, StyleSheet, Button, Alert, TouchableOpacity } from 'react-native';
+import { getExercises, deleteExercise } from '../../../src/db/database';
+import { useFocusEffect, Link } from 'expo-router';
+import { Calendar } from 'react-native-calendars';
 
 export default function ExerciseListScreen() {
   const [exercises, setExercises] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('');
 
   const fetchExercises = async () => {
     try {
@@ -17,13 +18,10 @@ export default function ExerciseListScreen() {
     }
   };
 
-  // 화면에 포커스될 때마다 데이터 새로고침 (입력 후 돌아올 때 유용)
   useFocusEffect(
     useCallback(() => {
       fetchExercises();
-      return () => {
-        // 선택적으로 화면이 언포커스될 때 정리 작업
-      };
+      return () => {};
     }, [])
   );
 
@@ -39,7 +37,7 @@ export default function ExerciseListScreen() {
             try {
               await deleteExercise(id);
               Alert.alert('삭제 완료', '운동 기록이 삭제되었습니다.');
-              fetchExercises(); // 삭제 후 목록 새로고침
+              fetchExercises();
             } catch (error) {
               console.error('운동 기록 삭제 오류:', error);
               Alert.alert('오류', '운동 기록 삭제에 실패했습니다: ' + error.message);
@@ -52,25 +50,56 @@ export default function ExerciseListScreen() {
     );
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.itemContainer}>
-      <View>
-        <Text style={styles.itemDate}>{item.date}</Text>
-        <Text style={styles.itemText}>종류: {item.type}</Text>
-        <Text style={styles.itemText}>시간: {item.duration}분</Text>
-        <Text style={styles.itemText}>칼로리: {item.calories} kcal</Text>
+  const onDayPress = (day) => {
+    setSelectedDate(day.dateString);
+  };
+
+  const filteredExercises = exercises.filter(exercise => exercise.date === selectedDate);
+
+  const renderItem = ({ item }) => {
+    let details;
+    // 운동 종류에 따라 다른 상세 정보를 표시합니다.
+    if (item.type === '산책') {
+      details = `지속 시간: ${item.duration}분, 거리: ${item.distance}km`;
+    } else if (item.type === '런닝머신') {
+      details = `지속 시간: ${item.duration}분, 기울기: ${item.incline}%, 속도: ${item.speed}km/h, 칼로리: ${item.calories}kcal`;
+    } else if (item.type === '자전거') {
+      details = `지속 시간: ${item.duration}분, 레벨: ${item.level}, 칼로리: ${item.calories}kcal`;
+    } else { // 무산소 운동
+      details = `세트: ${item.sets}, 반복: ${item.reps}회, 무게: ${item.weight}kg`;
+    }
+
+    return (
+      <View style={styles.itemContainer}>
+        <View>
+          <Text style={styles.itemDate}>{item.date}</Text>
+          <Text style={styles.itemText}>종류: {item.type}</Text>
+          <Text style={styles.itemText}>{details}</Text>
+        </View>
+        <Button title="삭제" onPress={() => handleDelete(item.id)} color="#ff6347" />
       </View>
-      <Button title="삭제" onPress={() => handleDelete(item.id)} color="#ff6347" />
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
-      {exercises.length === 0 ? (
-        <Text style={styles.emptyText}>아직 운동 기록이 없습니다. 추가해보세요!</Text>
+      <Calendar
+        onDayPress={onDayPress}
+        markedDates={{
+          [selectedDate]: { selected: true, disableTouchEvent: true, selectedDotColor: 'orange' }
+        }}
+      />
+      <View style={styles.addButtonContainer}>
+        <Link href="/tabs/exercise/input" asChild>
+          <Button title="운동 기록 추가" />
+        </Link>
+      </View>
+      {selectedDate && <Text style={styles.recordTitle}>{selectedDate} 운동 기록</Text>}
+      {filteredExercises.length === 0 ? (
+        <Text style={styles.emptyText}>선택한 날짜에 운동 기록이 없습니다.</Text>
       ) : (
         <FlatList
-          data={exercises}
+          data={filteredExercises}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
@@ -87,7 +116,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9',
   },
   listContent: {
-    paddingBottom: 20, // 하단 여백 추가
+    paddingBottom: 20,
   },
   itemContainer: {
     flexDirection: 'row',
@@ -114,8 +143,18 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    marginTop: 50,
+    marginTop: 20,
     fontSize: 16,
     color: '#888',
+  },
+  addButtonContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  recordTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
   },
 });

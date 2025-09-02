@@ -40,8 +40,8 @@ export default function RootLayout() {
     <Stack initialRouteName={initialRoute}>
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="tabs" options={{ headerShown: false }} />
-      <Stack.Screen name="exercise/input" options={{ presentation: 'modal', title: '운동 기록 추가' }} />
-      <Stack.Screen name="meal/input" options={{ presentation: 'modal', title: '식사 기록 추가' }} />
+      <Stack.Screen name="tabs/exercise/input" options={{ presentation: 'modal', title: '운동 기록 추가' }} />
+      <Stack.Screen name="tabs/meal/input" options={{ presentation: 'modal', title: '식사 기록 추가' }} />
     </Stack>
   );
 }

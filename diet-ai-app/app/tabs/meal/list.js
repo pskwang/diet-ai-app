@@ -1,11 +1,12 @@
-// app/meal/list.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Button, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Button, Alert, TouchableOpacity } from 'react-native';
 import { getMeals, deleteMeal } from '../../../src/db/database';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, Link } from 'expo-router';
+import { Calendar } from 'react-native-calendars';
 
 export default function MealListScreen() {
   const [meals, setMeals] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('');
 
   const fetchMeals = async () => {
     try {
@@ -49,6 +50,12 @@ export default function MealListScreen() {
     );
   };
 
+  const onDayPress = (day) => {
+    setSelectedDate(day.dateString);
+  };
+
+  const filteredMeals = meals.filter(meal => meal.date === selectedDate);
+
   const renderItem = ({ item }) => (
     <View style={styles.itemContainer}>
       <View>
@@ -67,11 +74,23 @@ export default function MealListScreen() {
 
   return (
     <View style={styles.container}>
-      {meals.length === 0 ? (
-        <Text style={styles.emptyText}>아직 식사 기록이 없습니다. 추가해보세요!</Text>
+      <Calendar
+        onDayPress={onDayPress}
+        markedDates={{
+          [selectedDate]: { selected: true, disableTouchEvent: true, selectedDotColor: 'orange' }
+        }}
+      />
+      <View style={styles.addButtonContainer}>
+        <Link href="/tabs/meal/input" asChild>
+          <Button title="식사 기록 추가" />
+        </Link>
+      </View>
+      {selectedDate && <Text style={styles.recordTitle}>{selectedDate} 식사 기록</Text>}
+      {filteredMeals.length === 0 ? (
+        <Text style={styles.emptyText}>선택한 날짜에 식사 기록이 없습니다.</Text>
       ) : (
         <FlatList
-          data={meals}
+          data={filteredMeals}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
@@ -120,8 +139,18 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    marginTop: 50,
+    marginTop: 20,
     fontSize: 16,
     color: '#888',
+  },
+  addButtonContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  recordTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
   },
 });

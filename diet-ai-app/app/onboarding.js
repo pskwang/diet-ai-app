@@ -6,7 +6,7 @@ import { setUserInfo } from '../src/db/database';
 export default function OnboardingScreen() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
-  const [targetWeight, setTargetWeight] = useState(''); // 목표 몸무게 추가
+  const [targetWeight, setTargetWeight] = useState('');
   const [selectedGender, setSelectedGender] = useState('');
   const [selectedBodyType, setSelectedBodyType] = useState('');
   const [selectedGoal, setSelectedGoal] = useState('');
@@ -17,7 +17,7 @@ export default function OnboardingScreen() {
   const genderOptions = ['남성', '여성'];
   const bodyTypeOptions = ['마름', '보통', '통통'];
   const goalOptions = ['다이어트', '벌크업', '유지'];
-  const periodOptions = ['3~4개월', '5~6개월', '7개월 이상'];
+  const periodOptions = ['1~3개월', '4~6개월', '7개월 이상'];
 
   const handleSave = async () => {
     if (!height || !weight || !targetWeight || !selectedGender || !selectedBodyType || !selectedGoal || !selectedPeriod) {
@@ -29,7 +29,7 @@ export default function OnboardingScreen() {
       await setUserInfo(
         Number(height),
         Number(weight),
-        Number(targetWeight), // 목표 몸무게 추가
+        Number(targetWeight),
         selectedGender,
         selectedBodyType,
         selectedGoal,

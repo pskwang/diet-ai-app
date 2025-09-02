@@ -33,6 +33,24 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="meal/input"
+        options={{
+          title: '식단추가',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="plus-circle" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="exercise/input"
+        options={{
+          title: '운동추가',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="plus-circle" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="chat/index"
         options={{
           title: '톡',
@@ -44,7 +62,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile/input"
         options={{
-          title: '프로필',
+          title: '설정',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="account" color={color} size={size} />
           ),
