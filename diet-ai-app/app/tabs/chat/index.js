@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, Button, FlatList, KeyboardAvoidingVi
 import { getExercises, getMeals, getUserInfo, updateMealCalories } from '../../../src/db/database';
 import { useFocusEffect } from 'expo-router';
 
-const CHATGPT_API_KEY = "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"; 
+const CHATGPT_API_KEY = "secretkey"; 
 const CHATGPT_API_URL = "https://api.openai.com/v1/chat/completions";
 
 export default function ChatScreen() {
