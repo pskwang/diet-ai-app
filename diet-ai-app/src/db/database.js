@@ -7,8 +7,6 @@ let db;
  */
 export const initDatabase = async () => {
   try {
-    // db = await SQLite.openDatabaseAsync('diet_ai_app.db');
-    // 데이터베이스를 열기 전에 삭제하여 스키마 변경을 반영합니다.
     // await SQLite.deleteDatabaseAsync('diet_ai_app.db');
     db = await SQLite.openDatabaseAsync('diet_ai_app.db');
     console.log('Database opened successfully.');
@@ -132,6 +130,23 @@ export const addMeal = async (date, type, food_name, quantity, calories, protein
     return result.lastInsertRowId;
   } catch (error) {
     console.error('Error adding meal:', error);
+    throw error;
+  }
+};
+
+/**
+ * AI가 계산한 칼로리 및 영양 성분을 업데이트합니다.
+ */
+export const updateMealCalories = async (mealId, calories, protein, carbs, fat) => {
+  if (!db) throw new Error('Database not initialized.');
+  try {
+    const result = await db.runAsync(
+      `UPDATE meals SET calories = ?, protein = ?, carbs = ?, fat = ? WHERE id = ?;`,
+      [calories, protein, carbs, fat, mealId]
+    );
+    return result.rowsAffected;
+  } catch (error) {
+    console.error(`Error updating meal ID ${mealId} calories:`, error);
     throw error;
   }
 };

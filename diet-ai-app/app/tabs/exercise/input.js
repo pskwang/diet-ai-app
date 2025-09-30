@@ -18,6 +18,7 @@ export default function ExerciseInputScreen() {
   const [incline, setIncline] = useState('');
   const [speed, setSpeed] = useState('');
   const [level, setLevel] = useState('');
+  const [count, setCount] = useState(''); // 줄넘기 개수 추가
   const [exerciseType, setExerciseType] = useState('유산소');
   const [muscleGroup, setMuscleGroup] = useState('가슴');
   const router = useRouter();
@@ -40,32 +41,70 @@ export default function ExerciseInputScreen() {
         Alert.alert('오류', '운동 종류를 선택해주세요.');
         return;
       }
+      
       // 유산소 운동별 유효성 검사 및 데이터 저장 로직
+      let success = false;
+      let durationValue = 0;
+      let caloriesValue = 0;
+      let distanceValue = 0;
+      let inclineValue = 0;
+      let speedValue = 0;
+      let levelValue = 0;
+
       if (type === '산책') {
         if (!duration || !distance) {
           Alert.alert('오류', '지속 시간과 거리를 입력해주세요.');
           return;
         }
-        await addExercise(formattedDate, type, parseInt(duration, 10), 0, parseFloat(distance), 0, 0, 0, 0, 0, 0);
-        Alert.alert('성공', '산책 기록이 추가되었습니다.');
+        durationValue = parseInt(duration, 10);
+        distanceValue = parseFloat(distance);
+        success = true;
       } else if (type === '런닝머신') {
         if (!duration || !incline || !speed || !calories) {
           Alert.alert('오류', '지속 시간, 기울기, 속도, 칼로리를 입력해주세요.');
           return;
         }
-        await addExercise(formattedDate, type, parseInt(duration, 10), parseInt(calories, 10), 0, parseFloat(incline), parseFloat(speed), 0, 0, 0, 0);
-        Alert.alert('성공', '런닝머신 기록이 추가되었습니다.');
+        durationValue = parseInt(duration, 10);
+        caloriesValue = parseInt(calories, 10);
+        inclineValue = parseFloat(incline);
+        speedValue = parseFloat(speed);
+        success = true;
       } else if (type === '자전거') {
         if (!duration || !level || !calories) {
           Alert.alert('오류', '지속 시간, 레벨, 칼로리를 입력해주세요.');
           return;
         }
-        await addExercise(formattedDate, type, parseInt(duration, 10), parseInt(calories, 10), 0, 0, 0, parseInt(level, 10), 0, 0, 0);
-        Alert.alert('성공', '자전거 기록이 추가되었습니다.');
+        durationValue = parseInt(duration, 10);
+        caloriesValue = parseInt(calories, 10);
+        levelValue = parseInt(level, 10);
+        success = true;
+      } else if (type === '줄넘기') { // 줄넘기 로직 추가
+        if (!duration || !count) {
+          Alert.alert('오류', '지속 시간과 개수를 입력해주세요.');
+          return;
+        }
+        durationValue = parseInt(duration, 10);
+        distanceValue = parseInt(count, 10); // 'distance' 필드에 '개수'를 임시 저장 (DB 스키마 변경 시 수정 필요)
+        success = true;
       } else {
         Alert.alert('오류', '유효한 유산소 운동 종류를 선택해주세요.');
         return;
       }
+      
+      if (success) {
+        try {
+            await addExercise(
+                formattedDate, type, durationValue, caloriesValue, 
+                distanceValue, inclineValue, speedValue, levelValue, 
+                0, 0, 0 // 무산소 필드는 0으로
+            );
+            Alert.alert('성공', `${type} 기록이 추가되었습니다.`);
+        } catch (error) {
+            console.error('운동 기록 추가 오류:', error);
+            Alert.alert('오류', '운동 기록 추가에 실패했습니다: ' + error.message);
+        }
+      }
+      
     } else { // 무산소
       if (!type || !sets || !reps || !weight) {
         Alert.alert('오류', '모든 필드를 입력해주세요.');
@@ -90,6 +129,7 @@ export default function ExerciseInputScreen() {
     setSets('');
     setReps('');
     setWeight('');
+    setCount(''); // 줄넘기 개수 초기화
     router.back();
   };
 
@@ -97,6 +137,7 @@ export default function ExerciseInputScreen() {
     { name: '산책', icon: 'walk', guide: '가벼운 속도로 걸으면서 유산소 운동을 합니다.' },
     { name: '런닝머신', icon: 'treadmill', guide: '실내에서 런닝머신을 사용해 유산소 운동을 합니다.' },
     { name: '자전거', icon: 'bike', guide: '실내/외 자전거를 사용해 유산소 운동을 합니다.' },
+    { name: '줄넘기', icon: 'human-handsup', guide: '줄넘기로 전신 유산소 운동을 합니다.' }, // 줄넘기 아이콘 추가
   ];
 
   const exerciseByMuscleGroup = {
@@ -203,6 +244,7 @@ export default function ExerciseInputScreen() {
                     setIncline('');
                     setSpeed('');
                     setLevel('');
+                    setCount('');
                   }}
                 >
                   <MaterialCommunityIcons name={item.icon} size={30} color={type === item.name ? '#fff' : '#007AFF'} />
@@ -295,6 +337,27 @@ export default function ExerciseInputScreen() {
                   onChangeText={setCalories}
                   keyboardType="numeric"
                   placeholder="예: 250"
+                />
+              </>
+            )}
+
+            {type === '줄넘기' && (
+              <>
+                <Text style={styles.label}>지속 시간 (분):</Text>
+                <TextInput
+                  style={styles.input}
+                  value={duration}
+                  onChangeText={setDuration}
+                  keyboardType="numeric"
+                  placeholder="예: 10"
+                />
+                <Text style={styles.label}>총 개수:</Text>
+                <TextInput
+                  style={styles.input}
+                  value={count}
+                  onChangeText={setCount}
+                  keyboardType="numeric"
+                  placeholder="예: 1000"
                 />
               </>
             )}

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TextInput, Button, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { getExercises, getMeals, getUserInfo } from '../../../src/db/database';
+import { View, Text, StyleSheet, TextInput, Button, FlatList, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { getExercises, getMeals, getUserInfo, updateMealCalories } from '../../../src/db/database';
+import { useFocusEffect } from 'expo-router';
 
-const CHATGPT_API_KEY = "YOUR_API_KEY_HERE"; 
+const CHATGPT_API_KEY = "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"; 
 const CHATGPT_API_URL = "https://api.openai.com/v1/chat/completions";
 
 export default function ChatScreen() {
@@ -13,29 +14,65 @@ export default function ChatScreen() {
   const [exercises, setExercises] = useState([]);
   const [meals, setMeals] = useState([]);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const user = await getUserInfo();
-        const exercisesData = await getExercises();
-        const mealsData = await getMeals();
-        setUserInfo(user);
-        setExercises(exercisesData);
-        setMeals(mealsData);
-  
+  // AI 응답에서 JSON 형식의 영양 데이터를 추출하는 함수
+  const extractNutritionData = (responseText) => {
+    try {
+      // AI에게 JSON 형식을 요청했으므로, 텍스트에서 JSON 객체를 찾습니다.
+      const jsonMatch = responseText.match(/\{[\s\S]*"fat":\s*\d+\s*\}/); 
+      if (jsonMatch) {
+        const data = JSON.parse(jsonMatch[0]);
+        // 필수 필드 (mealId와 calories)가 있는지 확인
+        if (data.mealId && typeof data.calories !== 'undefined') {
+          return data;
+        }
+      }
+    } catch (e) {
+      console.log("JSON 파싱 실패:", e);
+    }
+    return null;
+  };
+
+  const fetchUserData = useCallback(async (isInitialLoad = false) => {
+    try {
+      const user = await getUserInfo();
+      const exercisesData = await getExercises();
+      const mealsData = await getMeals();
+      setUserInfo(user);
+      setExercises(exercisesData);
+      setMeals(mealsData);
+
+      if (isInitialLoad) {
         setMessages([
           { id: '1', text: '안녕하세요! 저는 당신의 건강 목표 달성을 도와줄 AI 코치입니다. 무엇이든 물어보세요!', sender: 'ai' },
         ]);
-      } catch (error) {
-        console.error("데이터 로드 오류:", error);
-        Alert.alert("오류", "데이터를 불러오는 중 문제가 발생했습니다.");
       }
-    };
-    fetchUserData();
+    } catch (error) {
+      console.error("데이터 로드 오류:", error);
+      Alert.alert("오류", "데이터를 불러오는 중 문제가 발생했습니다.");
+    }
   }, []);
 
+  useEffect(() => {
+    fetchUserData(true);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserData();
+    }, [])
+  );
+
   const handleSendMessage = async () => {
-    if (inputText.trim() === '') return;
+    if (inputText.trim() === '' || loading) return;
+
+    if (!CHATGPT_API_KEY || CHATGPT_API_KEY === "YOUR_API_KEY_HERE") {
+         Alert.alert("오류", "API 키를 입력하지 않았습니다. CHATGPT_API_KEY를 설정해주세요.");
+         return;
+    }
+    if (!userInfo) {
+         Alert.alert("알림", "사용자 정보가 없어 AI 분석을 할 수 없습니다.");
+         return;
+    }
 
     const userMessage = { id: Date.now().toString(), text: inputText, sender: 'user' };
     setMessages(prevMessages => [...prevMessages, userMessage]);
@@ -43,24 +80,37 @@ export default function ChatScreen() {
     setLoading(true);
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const dateObj = new Date();
+      const today = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+      
+      const todaysMeals = meals.filter(m => m.date === today && m.calories === 0);
+      const todaysExercises = exercises.filter(e => e.date === today);
+
+      const mealsSummary = todaysMeals.map(m => `(ID:${m.id}, ${m.type}: ${m.food_name} ${m.quantity})`).join('; ');
+      const exercisesSummary = todaysExercises.map(e => `${e.type} (${e.duration ? e.duration + '분' : ''})`).join('; ');
+
       const userDataForAI = {
         user_info: userInfo,
-        today_exercises: exercises.filter(e => e.date === today),
-        today_meals: meals.filter(m => m.date === today),
-        user_query: inputText
+        today_exercises_summary: exercisesSummary || '없음',
+        uncalculated_meals_summary: mealsSummary || '없음',
+        user_query: userMessage.text
       };
 
       const prompt = `
-        당신은 사용자의 건강 목표 달성을 돕는 AI 코치입니다.
-        사용자의 다이어트 앱 데이터는 다음과 같습니다:
-        - 사용자 정보: ${JSON.stringify(userDataForAI.user_info)}
-        - 오늘의 운동 기록: ${JSON.stringify(userDataForAI.today_exercises)}
-        - 오늘의 식사 기록: ${JSON.stringify(userDataForAI.today_meals)}
+        당신은 사용자의 건강 목표 달성을 돕는 전문 AI 코치입니다.
+        사용자의 목표 몸무게는 ${userInfo.target_weight}kg, 주요 목표는 "${userInfo.goal}"입니다.
+        
+        [오늘의 운동 기록]: ${userDataForAI.today_exercises_summary}
+        [오늘의 미분석 식단]: ${userDataForAI.uncalculated_meals_summary}
         
         사용자의 질문: "${userDataForAI.user_query}"
         
-        위 데이터를 바탕으로 친절하고 전문적인 AI 코치처럼 답변해 주세요.
+        [AI 기능 가이드라인]
+        1. '미분석 식단'이 존재하면, AI는 이 식단 중 가장 최근 기록 1개(ID가 가장 높은 것)에 대해 **칼로리, 단백질, 탄수화물, 지방을 계산**해야 합니다.
+        2. 계산 결과는 답변 텍스트와 함께, **반드시 다음의 JSON 형식으로만 반환**해야 합니다. (JSON은 답변 텍스트 뒤에 별도로 붙여주세요.)
+           { "mealId": (업데이트할 식사 기록의 ID), "calories": (계산된 칼로리), "protein": (계산된 단백질), "carbs": (계산된 탄수화물), "fat": (계산된 지방) }
+        3. 답변은 한글로만 작성하고, 친절하고 전문적인 코치처럼 답변해주세요.
+        4. **JSON 객체를 제외한 순수 답변 텍스트만** 사용자에게 표시되어야 합니다.
       `;
 
       const requestBody = {
@@ -78,22 +128,50 @@ export default function ChatScreen() {
       });
 
       const responseData = await aiResponse.json();
+      let aiResponseText = '죄송합니다. API 응답을 처리할 수 없습니다.';
+      let nutritionData = null;
 
-      // API 응답에 오류가 있는지 확인합니다.
-      if (responseData.choices && responseData.choices[0] && responseData.choices[0].message) {
-        const aiResponseText = responseData.choices[0].message.content;
-        const aiMessage = { id: (Date.now() + 1).toString(), text: aiResponseText, sender: 'ai' };
-        setMessages(prevMessages => [...prevMessages, aiMessage]);
+      if (aiResponse.ok && responseData.choices && responseData.choices[0] && responseData.choices[0].message) {
+        let rawResponse = responseData.choices[0].message.content;
+        
+        // 🚨 수정된 부분: JSON 데이터 추출 및 DB 업데이트 로직
+        nutritionData = extractNutritionData(rawResponse);
+        
+        if (nutritionData && nutritionData.mealId) {
+            await updateMealCalories(
+                nutritionData.mealId, 
+                nutritionData.calories || 0,
+                nutritionData.protein || 0,
+                nutritionData.carbs || 0,
+                nutritionData.fat || 0
+            );
+            
+            // 🚨 최종 답변 텍스트에서 JSON 객체와 DB 업데이트 성공 메시지 제거
+            // JSON 객체와 관련된 모든 부분을 제거합니다.
+            aiResponseText = rawResponse.replace(/\{[\s\S]*"fat":\s*\d+\s*\}/, '').trim(); 
+            
+            // AI 코치가 JSON 출력 후 추가했던 성공 메시지도 제거합니다. (선택 사항)
+            aiResponseText = aiResponseText.replace(/✅ \[AI 분석 완료].*$/, '').trim(); 
+            
+            fetchUserData(); // DB 업데이트 후 데이터 새로고침 (화면 갱신 목적)
+        } else {
+            aiResponseText = rawResponse;
+        }
+        
       } else {
-        // 유효하지 않은 응답일 경우 오류 메시지를 표시합니다.
-        const errorMessage = { id: (Date.now() + 1).toString(), text: 'API 응답 형식에 문제가 있습니다.', sender: 'ai' };
-        setMessages(prevMessages => [...prevMessages, errorMessage]);
-        console.error('API 응답 오류:', responseData);
+        const errorMessage = responseData.error ? responseData.error.message : '알 수 없는 API 응답 오류';
+        const errorMsgForUser = { id: (Date.now() + 1).toString(), text: `⚠️ API 요청 실패: ${errorMessage}`, sender: 'ai' };
+        setMessages(prevMessages => [...prevMessages, errorMsgForUser]);
+        console.error('API 응답 오류 상세:', responseData);
       }
 
+      const aiMessage = { id: (Date.now() + 1).toString(), text: aiResponseText, sender: 'ai' };
+      setMessages(prevMessages => [...prevMessages, aiMessage]);
+      fetchUserData(); 
+
     } catch (error) {
-      console.error('AI 응답 오류:', error);
-      const errorMessage = { id: (Date.now() + 1).toString(), text: '죄송합니다. AI 응답에 문제가 발생했습니다.', sender: 'ai' };
+      console.error('네트워크 또는 처리 중 오류:', error);
+      const errorMessage = { id: (Date.now() + 1).toString(), text: '죄송합니다. 네트워크 요청에 문제가 발생했습니다. 인터넷 연결을 확인해주세요.', sender: 'ai' };
       setMessages(prevMessages => [...prevMessages, errorMessage]);
     } finally {
       setLoading(false);
@@ -114,6 +192,14 @@ export default function ChatScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.messageList}
       />
+      
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#007AFF" />
+          <Text style={styles.loadingText}>AI 코치가 답변을 생성 중입니다...</Text>
+        </View>
+      )}
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.inputContainer}
@@ -122,11 +208,15 @@ export default function ChatScreen() {
           style={styles.input}
           value={inputText}
           onChangeText={setInputText}
-          placeholder="메시지를 입력하세요..."
+          placeholder="메시지를 입력하세요 (예: 오늘 식단 분석해줘)"
           placeholderTextColor="#999"
           editable={!loading}
         />
-        <Button title="보내기" onPress={handleSendMessage} disabled={loading} />
+        <Button 
+          title={loading ? "전송 중" : "보내기"} 
+          onPress={handleSendMessage} 
+          disabled={loading || inputText.trim() === ''} 
+        />
       </KeyboardAvoidingView>
     </View>
   );
@@ -144,16 +234,20 @@ const styles = StyleSheet.create({
   messageBubble: {
     maxWidth: '80%',
     padding: 12,
-    borderRadius: 20,
+    borderRadius: 15,
     marginBottom: 10,
   },
   userMessage: {
     backgroundColor: '#007AFF',
     alignSelf: 'flex-end',
+    borderTopRightRadius: 5,
   },
   aiMessage: {
     backgroundColor: '#fff',
     alignSelf: 'flex-start',
+    borderTopLeftRadius: 5,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   messageText: {
     color: '#fff',
@@ -168,14 +262,30 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#ccc',
     backgroundColor: '#fff',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 20,
+    borderRadius: 25,
+    paddingVertical: 10,
     paddingHorizontal: 15,
     marginRight: 10,
     fontSize: 16,
   },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: '#e6f7ff',
+    borderTopWidth: 1,
+    borderTopColor: '#cceeff',
+  },
+  loadingText: {
+    marginLeft: 8,
+    color: '#007AFF',
+    fontSize: 14,
+  }
 });

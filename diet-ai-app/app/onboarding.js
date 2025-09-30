@@ -17,7 +17,7 @@ export default function OnboardingScreen() {
   const genderOptions = ['남성', '여성'];
   const bodyTypeOptions = ['마름', '보통', '통통'];
   const goalOptions = ['다이어트', '벌크업', '유지'];
-  const periodOptions = ['1~3개월', '4~6개월', '7개월 이상'];
+  const periodOptions = ['1개월 미만', '3~5개월', '7개월 이상']; // ✨ 수정된 부분 ✨
 
   const handleSave = async () => {
     if (!height || !weight || !targetWeight || !selectedGender || !selectedBodyType || !selectedGoal || !selectedPeriod) {

@@ -22,7 +22,15 @@ export default function MealInputScreen() {
     setShowDatePicker(true);
   };
 
-  const formattedDate = date.toISOString().split('T')[0];
+  // 날짜를 YYYY-MM-DD 형식의 문자열로 얻는 헬퍼 함수
+  const getFormattedDate = (dateObj) => {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formattedDate = getFormattedDate(date);
 
   const handleAddMeal = async () => {
     if (!type || !foodName || !quantity) {
@@ -30,14 +38,15 @@ export default function MealInputScreen() {
       return;
     }
 
-    // AI가 계산할 수 있도록 칼로리, 단백질, 탄수화물, 지방은 0으로 임시 저장
+    // AI가 계산할 때까지 칼로리, 단백질, 탄수화물, 지방은 0으로 임시 저장
     const parsedCalories = 0;
     const parsedProtein = 0;
     const parsedCarbs = 0;
     const parsedFat = 0;
 
     try {
-      await addMeal(
+      // 🚨 수정: addMeal이 저장된 레코드의 ID를 반환합니다.
+      const mealId = await addMeal(
         formattedDate,
         type,
         foodName,
@@ -47,7 +56,12 @@ export default function MealInputScreen() {
         parsedCarbs,
         parsedFat
       );
-      Alert.alert('성공', '식사 기록이 추가되었습니다.');
+
+      // AI 챗봇에게 분석 요청을 유도합니다.
+      Alert.alert(
+        '성공', 
+        `식사 기록이 추가되었습니다 (ID: ${mealId}). AI 챗봇 탭에서 '오늘 식단 분석해줘'라고 물어보세요!`
+      );
       
       setType('');
       setFoodName('');
