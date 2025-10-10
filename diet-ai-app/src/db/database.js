@@ -7,12 +7,10 @@ let db;
  */
 export const initDatabase = async () => {
   try {
-    // await SQLite.deleteDatabaseAsync('diet_ai_app.db');
     db = await SQLite.openDatabaseAsync('diet_ai_app.db');
     console.log('Database opened successfully.');
     await db.execAsync(`PRAGMA journal_mode = WAL;`);
 
-    // user_info 테이블 스키마 변경 (새로운 필드 추가)
     await db.runAsync(
       `CREATE TABLE IF NOT EXISTS user_info (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +25,6 @@ export const initDatabase = async () => {
     );
     console.log('User Info table created or already exists.');
 
-    // exercises 테이블 스키마 변경 (새로운 필드 추가)
     await db.runAsync(
       `CREATE TABLE IF NOT EXISTS exercises (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +43,6 @@ export const initDatabase = async () => {
     );
     console.log('Exercises table created or already exists.');
 
-    // meals 테이블 생성
     await db.runAsync(
       `CREATE TABLE IF NOT EXISTS meals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,6 +78,23 @@ export const addExercise = async (date, type, duration, calories, distance, incl
     return result.lastInsertRowId;
   } catch (error) {
     console.error('Error adding exercise:', error);
+    throw error;
+  }
+};
+
+/**
+ * AI가 계산한 칼로리 및 영양 성분을 업데이트합니다.
+ */
+export const updateExerciseCalories = async (exerciseId, calories) => {
+  if (!db) throw new Error('Database not initialized.');
+  try {
+    const result = await db.runAsync(
+      `UPDATE exercises SET calories = ? WHERE id = ?;`,
+      [calories, exerciseId]
+    );
+    return result.rowsAffected;
+  } catch (error) {
+    console.error(`Error updating exercise ID ${exerciseId} calories:`, error);
     throw error;
   }
 };

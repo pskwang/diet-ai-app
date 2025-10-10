@@ -18,7 +18,7 @@ export default function ExerciseInputScreen() {
   const [incline, setIncline] = useState('');
   const [speed, setSpeed] = useState('');
   const [level, setLevel] = useState('');
-  const [count, setCount] = useState(''); // 줄넘기 개수 추가
+  const [count, setCount] = useState('');
   const [exerciseType, setExerciseType] = useState('유산소');
   const [muscleGroup, setMuscleGroup] = useState('가슴');
   const router = useRouter();
@@ -42,7 +42,6 @@ export default function ExerciseInputScreen() {
         return;
       }
       
-      // 유산소 운동별 유효성 검사 및 데이터 저장 로직
       let success = false;
       let durationValue = 0;
       let caloriesValue = 0;
@@ -50,6 +49,7 @@ export default function ExerciseInputScreen() {
       let inclineValue = 0;
       let speedValue = 0;
       let levelValue = 0;
+      let repsValue = 0;
 
       if (type === '산책') {
         if (!duration || !distance) {
@@ -78,13 +78,13 @@ export default function ExerciseInputScreen() {
         caloriesValue = parseInt(calories, 10);
         levelValue = parseInt(level, 10);
         success = true;
-      } else if (type === '줄넘기') { // 줄넘기 로직 추가
+      } else if (type === '줄넘기') {
         if (!duration || !count) {
           Alert.alert('오류', '지속 시간과 개수를 입력해주세요.');
           return;
         }
         durationValue = parseInt(duration, 10);
-        distanceValue = parseInt(count, 10); // 'distance' 필드에 '개수'를 임시 저장 (DB 스키마 변경 시 수정 필요)
+        repsValue = parseInt(count, 10);
         success = true;
       } else {
         Alert.alert('오류', '유효한 유산소 운동 종류를 선택해주세요.');
@@ -96,7 +96,7 @@ export default function ExerciseInputScreen() {
             await addExercise(
                 formattedDate, type, durationValue, caloriesValue, 
                 distanceValue, inclineValue, speedValue, levelValue, 
-                0, 0, 0 // 무산소 필드는 0으로
+                0, repsValue, 0
             );
             Alert.alert('성공', `${type} 기록이 추가되었습니다.`);
         } catch (error) {
@@ -129,7 +129,7 @@ export default function ExerciseInputScreen() {
     setSets('');
     setReps('');
     setWeight('');
-    setCount(''); // 줄넘기 개수 초기화
+    setCount('');
     router.back();
   };
 
@@ -137,7 +137,7 @@ export default function ExerciseInputScreen() {
     { name: '산책', icon: 'walk', guide: '가벼운 속도로 걸으면서 유산소 운동을 합니다.' },
     { name: '런닝머신', icon: 'treadmill', guide: '실내에서 런닝머신을 사용해 유산소 운동을 합니다.' },
     { name: '자전거', icon: 'bike', guide: '실내/외 자전거를 사용해 유산소 운동을 합니다.' },
-    { name: '줄넘기', icon: 'human-handsup', guide: '줄넘기로 전신 유산소 운동을 합니다.' }, // 줄넘기 아이콘 추가
+    { name: '줄넘기', icon: 'human-handsup', guide: '줄넘기로 전신 유산소 운동을 합니다.' },
   ];
 
   const exerciseByMuscleGroup = {

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TextInput, Button, FlatList, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
-import { getExercises, getMeals, getUserInfo, updateMealCalories } from '../../../src/db/database';
+import { getExercises, getMeals, getUserInfo, updateMealCalories, updateExerciseCalories } from '../../../src/db/database';
 import { useFocusEffect } from 'expo-router';
 
-const CHATGPT_API_KEY = "secretkey"; 
+const CHATGPT_API_KEY = "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"; 
 const CHATGPT_API_URL = "https://api.openai.com/v1/chat/completions";
 
 export default function ChatScreen() {
@@ -14,15 +14,16 @@ export default function ChatScreen() {
   const [exercises, setExercises] = useState([]);
   const [meals, setMeals] = useState([]);
 
-  // AI 응답에서 JSON 형식의 영양 데이터를 추출하는 함수
+  // AI 응답에서 JSON 형식의 데이터를 추출하는 함수 (식단 및 운동 모두 처리)
   const extractNutritionData = (responseText) => {
     try {
-      // AI에게 JSON 형식을 요청했으므로, 텍스트에서 JSON 객체를 찾습니다.
-      const jsonMatch = responseText.match(/\{[\s\S]*"fat":\s*\d+\s*\}/); 
+      // 식단 또는 운동 ID를 포함하는 JSON 객체를 찾습니다.
+      const jsonMatch = responseText.match(/\{[\s\S]*"fat":\s*\d+\s*\}/) || responseText.match(/\{[\s\S]*"exerciseId":\s*\d+\s*\}/); 
       if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[0]);
-        // 필수 필드 (mealId와 calories)가 있는지 확인
-        if (data.mealId && typeof data.calories !== 'undefined') {
+        const jsonString = jsonMatch[0].replace(/```json|```/g, '').trim();
+        const data = JSON.parse(jsonString);
+        
+        if ((data.mealId || data.exerciseId) && typeof data.calories !== 'undefined') {
           return data;
         }
       }
@@ -83,34 +84,34 @@ export default function ChatScreen() {
       const dateObj = new Date();
       const today = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
       
-      const todaysMeals = meals.filter(m => m.date === today && m.calories === 0);
-      const todaysExercises = exercises.filter(e => e.date === today);
+      const uncalculatedMeals = meals.filter(m => m.date === today && m.calories === 0);
+      const uncalculatedExercises = exercises.filter(e => e.date === today && e.calories === 0);
 
-      const mealsSummary = todaysMeals.map(m => `(ID:${m.id}, ${m.type}: ${m.food_name} ${m.quantity})`).join('; ');
-      const exercisesSummary = todaysExercises.map(e => `${e.type} (${e.duration ? e.duration + '분' : ''})`).join('; ');
+      const mealsSummary = uncalculatedMeals.map(m => `(Meal ID:${m.id}, ${m.type}: ${m.food_name} ${m.quantity})`).join('; ');
+      const exercisesSummary = uncalculatedExercises.map(e => `(Exercise ID:${e.id}, ${e.type}: 세트:${e.sets}, 반복:${e.reps}, 무게:${e.weight})`).join('; ');
 
       const userDataForAI = {
         user_info: userInfo,
-        today_exercises_summary: exercisesSummary || '없음',
         uncalculated_meals_summary: mealsSummary || '없음',
+        uncalculated_exercises_summary: exercisesSummary || '없음',
         user_query: userMessage.text
       };
 
       const prompt = `
         당신은 사용자의 건강 목표 달성을 돕는 전문 AI 코치입니다.
-        사용자의 목표 몸무게는 ${userInfo.target_weight}kg, 주요 목표는 "${userInfo.goal}"입니다.
+        사용자의 목표 몸무게는 ${userInfo.target_weight}kg, 현재 몸무게는 ${userInfo.weight}kg, 주요 목표는 "${userInfo.goal}"입니다.
         
-        [오늘의 운동 기록]: ${userDataForAI.today_exercises_summary}
         [오늘의 미분석 식단]: ${userDataForAI.uncalculated_meals_summary}
+        [오늘의 미분석 운동]: ${userDataForAI.uncalculated_exercises_summary}
         
         사용자의 질문: "${userDataForAI.user_query}"
         
         [AI 기능 가이드라인]
-        1. '미분석 식단'이 존재하면, AI는 이 식단 중 가장 최근 기록 1개(ID가 가장 높은 것)에 대해 **칼로리, 단백질, 탄수화물, 지방을 계산**해야 합니다.
-        2. 계산 결과는 답변 텍스트와 함께, **반드시 다음의 JSON 형식으로만 반환**해야 합니다. (JSON은 답변 텍스트 뒤에 별도로 붙여주세요.)
-           { "mealId": (업데이트할 식사 기록의 ID), "calories": (계산된 칼로리), "protein": (계산된 단백질), "carbs": (계산된 탄수화물), "fat": (계산된 지방) }
-        3. 답변은 한글로만 작성하고, 친절하고 전문적인 코치처럼 답변해주세요.
-        4. **JSON 객체를 제외한 순수 답변 텍스트만** 사용자에게 표시되어야 합니다.
+        1. '미분석 식단' 또는 '미분석 운동'이 존재하면, AI는 가장 최근 기록 1개에 대해 **칼로리 및 영양 성분을 계산**해야 합니다.
+        2. 계산 결과는 답변 텍스트와 함께, **반드시 다음의 JSON 형식 중 하나로만 반환**해야 합니다. (JSON은 답변 텍스트 뒤에 별도로 붙여주세요.)
+           - 식단 업데이트: { "mealId": (ID), "calories": (kcal), "protein": (g), "carbs": (g), "fat": (g) }
+           - 운동 업데이트: { "exerciseId": (ID), "calories": (kcal) }
+        3. 답변 텍스트는 계산된 영양 정보를 기반으로 친절하고 전문적인 코치처럼 한국어로 작성해주세요.
       `;
 
       const requestBody = {
@@ -134,28 +135,34 @@ export default function ChatScreen() {
       if (aiResponse.ok && responseData.choices && responseData.choices[0] && responseData.choices[0].message) {
         let rawResponse = responseData.choices[0].message.content;
         
-        // 🚨 수정된 부분: JSON 데이터 추출 및 DB 업데이트 로직
         nutritionData = extractNutritionData(rawResponse);
         
-        if (nutritionData && nutritionData.mealId) {
-            await updateMealCalories(
-                nutritionData.mealId, 
-                nutritionData.calories || 0,
-                nutritionData.protein || 0,
-                nutritionData.carbs || 0,
-                nutritionData.fat || 0
-            );
-            
-            // 🚨 최종 답변 텍스트에서 JSON 객체와 DB 업데이트 성공 메시지 제거
-            // JSON 객체와 관련된 모든 부분을 제거합니다.
-            aiResponseText = rawResponse.replace(/\{[\s\S]*"fat":\s*\d+\s*\}/, '').trim(); 
-            
-            // AI 코치가 JSON 출력 후 추가했던 성공 메시지도 제거합니다. (선택 사항)
-            aiResponseText = aiResponseText.replace(/✅ \[AI 분석 완료].*$/, '').trim(); 
-            
-            fetchUserData(); // DB 업데이트 후 데이터 새로고침 (화면 갱신 목적)
+        if (nutritionData) {
+            if (nutritionData.mealId) {
+                await updateMealCalories(
+                    nutritionData.mealId, 
+                    nutritionData.calories || 0,
+                    nutritionData.protein || 0,
+                    nutritionData.carbs || 0,
+                    nutritionData.fat || 0
+                );
+                aiResponseText = rawResponse.replace(/\{[\s\S]*"fat":\s*\d+\s*\}/, '').trim(); 
+                aiResponseText = aiResponseText.replace(/```json[\s\S]*```/, '').trim(); 
+                aiResponseText += `\n\n✅ [AI 분석 완료] 식단 ID ${nutritionData.mealId}의 칼로리가 저장되었습니다.`;
+            } else if (nutritionData.exerciseId) {
+                // 🚨 운동 칼로리 업데이트
+                await updateExerciseCalories(
+                    nutritionData.exerciseId, 
+                    nutritionData.calories || 0
+                );
+                aiResponseText = rawResponse.replace(/\{[\s\S]*"calories":\s*\d+\s*\}/, '').trim(); 
+                aiResponseText = aiResponseText.replace(/```json[\s\S]*```/, '').trim(); 
+                aiResponseText += `\n\n✅ [AI 분석 완료] 운동 ID ${nutritionData.exerciseId}의 칼로리가 저장되었습니다.`;
+            }
+            fetchUserData();
+
         } else {
-            aiResponseText = rawResponse;
+            aiResponseText = rawResponse.replace(/```json[\s\S]*```/, '').trim(); 
         }
         
       } else {
@@ -165,7 +172,7 @@ export default function ChatScreen() {
         console.error('API 응답 오류 상세:', responseData);
       }
 
-      const aiMessage = { id: (Date.now() + 1).toString(), text: aiResponseText, sender: 'ai' };
+      const aiMessage = { id: (Date.now() + 1).toString(), text: aiResponseText.trim(), sender: 'ai' };
       setMessages(prevMessages => [...prevMessages, aiMessage]);
       fetchUserData(); 
 

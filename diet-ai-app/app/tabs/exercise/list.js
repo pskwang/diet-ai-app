@@ -60,13 +60,15 @@ export default function ExerciseListScreen() {
     let details;
     // 운동 종류에 따라 다른 상세 정보를 표시합니다.
     if (item.type === '산책') {
-      details = `지속 시간: ${item.duration}분, 거리: ${item.distance}km`;
+      details = `지속 시간: ${item.duration}분, 거리: ${item.distance}km, 소모 칼로리: ${item.calories}kcal`;
     } else if (item.type === '런닝머신') {
-      details = `지속 시간: ${item.duration}분, 기울기: ${item.incline}%, 속도: ${item.speed}km/h, 칼로리: ${item.calories}kcal`;
+      details = `지속 시간: ${item.duration}분, 기울기: ${item.incline}%, 속도: ${item.speed}km/h, 소모 칼로리: ${item.calories}kcal`;
     } else if (item.type === '자전거') {
-      details = `지속 시간: ${item.duration}분, 레벨: ${item.level}, 칼로리: ${item.calories}kcal`;
+      details = `지속 시간: ${item.duration}분, 레벨: ${item.level}, 소모 칼로리: ${item.calories}kcal`;
+    } else if (item.type === '줄넘기') {
+      details = `지속 시간: ${item.duration}분, 총 개수: ${item.reps}회, 소모 칼로리: ${item.calories}kcal`;
     } else { // 무산소 운동
-      details = `세트: ${item.sets}, 반복: ${item.reps}회, 무게: ${item.weight}kg`;
+      details = `세트: ${item.sets}, 반복: ${item.reps}회, 무게: ${item.weight}kg, 소모 칼로리: ${item.calories}kcal`;
     }
 
     return (
