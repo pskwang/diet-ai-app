@@ -4,7 +4,7 @@ import { getExercises, getMeals, getUserInfo, updateMealCalories, updateExercise
 import { useFocusEffect } from 'expo-router';
 
 const CHATGPT_API_KEY = "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"; 
-const CHATGPT_API_URL = "https://api.openai.com/v1/chat/completions";
+const CHATGPT_API_URL = "[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)";
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState([]);
@@ -14,11 +14,31 @@ export default function ChatScreen() {
   const [exercises, setExercises] = useState([]);
   const [meals, setMeals] = useState([]);
 
-  // AI 응답에서 JSON 형식의 데이터를 추출하는 함수 (식단 및 운동 모두 처리)
+  // AI 응답에서 JSON 형식의 영양 데이터를 추출하는 함수
   const extractNutritionData = (responseText) => {
     try {
-      // 식단 또는 운동 ID를 포함하는 JSON 객체를 찾습니다.
-      const jsonMatch = responseText.match(/\{[\s\S]*"fat":\s*\d+\s*\}/) || responseText.match(/\{[\s\S]*"exerciseId":\s*\d+\s*\}/); 
+      // 🚨 수정된 부분: 운동 JSON({..."exerciseId":d...}) 또는 식단 JSON({..."fat":d...})을 순서대로 정확하게 찾음
+      const exerciseMatch = responseText.match(/\{[\s\S]*"exerciseId":\s*\d+[\s\S]*\}/);
+      const mealMatch = responseText.match(/\{[\s\S]*"fat":\s*\d+[\s\S]*\}/);
+      
+      let jsonMatch = null;
+      if (exerciseMatch) {
+          jsonMatch = exerciseMatch;
+      } else if (mealMatch) {
+          jsonMatch = mealMatch;
+      } else {
+          // 코드 블록 안에 있는 JSON도 탐색 시도
+          const codeBlockMatch = responseText.match(/```json([\s\S]*?)```/);
+          if (codeBlockMatch) {
+              const codeJsonString = codeBlockMatch[1].trim();
+              const data = JSON.parse(codeJsonString);
+              if ((data.mealId || data.exerciseId) && typeof data.calories !== 'undefined') {
+                  return data;
+              }
+          }
+          return null;
+      }
+      
       if (jsonMatch) {
         const jsonString = jsonMatch[0].replace(/```json|```/g, '').trim();
         const data = JSON.parse(jsonString);
@@ -108,7 +128,7 @@ export default function ChatScreen() {
         
         [AI 기능 가이드라인]
         1. '미분석 식단' 또는 '미분석 운동'이 존재하면, AI는 가장 최근 기록 1개에 대해 **칼로리 및 영양 성분을 계산**해야 합니다.
-        2. 계산 결과는 답변 텍스트와 함께, **반드시 다음의 JSON 형식 중 하나로만 반환**해야 합니다. (JSON은 답변 텍스트 뒤에 별도로 붙여주세요.)
+        2. 계산 결과는 답변 텍스트와 함께, **반드시 다음의 JSON 형식 중 하나로만 반환**해야 합니다:
            - 식단 업데이트: { "mealId": (ID), "calories": (kcal), "protein": (g), "carbs": (g), "fat": (g) }
            - 운동 업데이트: { "exerciseId": (ID), "calories": (kcal) }
         3. 답변 텍스트는 계산된 영양 정보를 기반으로 친절하고 전문적인 코치처럼 한국어로 작성해주세요.
@@ -146,21 +166,19 @@ export default function ChatScreen() {
                     nutritionData.carbs || 0,
                     nutritionData.fat || 0
                 );
-                aiResponseText = rawResponse.replace(/\{[\s\S]*"fat":\s*\d+\s*\}/, '').trim(); 
-                aiResponseText = aiResponseText.replace(/```json[\s\S]*```/, '').trim(); 
-                aiResponseText += `\n\n✅ [AI 분석 완료] 식단 ID ${nutritionData.mealId}의 칼로리가 저장되었습니다.`;
             } else if (nutritionData.exerciseId) {
                 // 🚨 운동 칼로리 업데이트
                 await updateExerciseCalories(
                     nutritionData.exerciseId, 
                     nutritionData.calories || 0
                 );
-                aiResponseText = rawResponse.replace(/\{[\s\S]*"calories":\s*\d+\s*\}/, '').trim(); 
-                aiResponseText = aiResponseText.replace(/```json[\s\S]*```/, '').trim(); 
-                aiResponseText += `\n\n✅ [AI 분석 완료] 운동 ID ${nutritionData.exerciseId}의 칼로리가 저장되었습니다.`;
             }
-            fetchUserData();
-
+            
+            aiResponseText = rawResponse.replace(/\{[\s\S]*"fat":\s*\d+\s*\}/, '').trim(); 
+            aiResponseText = aiResponseText.replace(/\{[\s\S]*"calories":\s*\d+\s*\}/, '').trim(); 
+            aiResponseText = aiResponseText.replace(/```json[\s\S]*```/, '').trim(); 
+            
+            fetchUserData(); // DB 업데이트 후 데이터 새로고침 (화면 갱신 목적)
         } else {
             aiResponseText = rawResponse.replace(/```json[\s\S]*```/, '').trim(); 
         }

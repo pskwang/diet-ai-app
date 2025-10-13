@@ -44,7 +44,7 @@ export default function ExerciseInputScreen() {
       
       let success = false;
       let durationValue = 0;
-      let caloriesValue = 0;
+      let caloriesValue = 0; 
       let distanceValue = 0;
       let inclineValue = 0;
       let speedValue = 0;
@@ -58,10 +58,11 @@ export default function ExerciseInputScreen() {
         }
         durationValue = parseInt(duration, 10);
         distanceValue = parseFloat(distance);
+        caloriesValue = 0; // AI 계산 대상 (0으로 저장)
         success = true;
       } else if (type === '런닝머신') {
         if (!duration || !incline || !speed || !calories) {
-          Alert.alert('오류', '지속 시간, 기울기, 속도, 칼로리를 입력해주세요.');
+          Alert.alert('오 오류', '지속 시간, 기울기, 속도, 칼로리를 입력해주세요.');
           return;
         }
         durationValue = parseInt(duration, 10);
@@ -85,6 +86,7 @@ export default function ExerciseInputScreen() {
         }
         durationValue = parseInt(duration, 10);
         repsValue = parseInt(count, 10);
+        caloriesValue = 0; // 줄넘기는 칼로리를 0으로 저장 (AI 계산 대상)
         success = true;
       } else {
         Alert.alert('오류', '유효한 유산소 운동 종류를 선택해주세요.');
@@ -111,6 +113,7 @@ export default function ExerciseInputScreen() {
         return;
       }
       try {
+        // 무산소는 칼로리를 0으로 저장 (AI 계산 대상)
         await addExercise(formattedDate, type, 0, 0, 0, 0, 0, 0, parseInt(sets, 10), parseInt(reps, 10), parseFloat(weight));
         Alert.alert('성공', '무산소 운동 기록이 추가되었습니다.');
       } catch (error) {
