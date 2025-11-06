@@ -7,13 +7,20 @@ let db;
  */
 export const initDatabase = async () => {
   try {
+    // 🚨 테스트를 위해 필요하다면 기존 DB를 삭제하고 시작할 수 있습니다.
+    // 배포 시에는 주석 처리하거나 신중하게 사용해야 합니다.
+    // console.log('Attempting to delete existing database...');
+    // await SQLite.deleteDatabaseAsync('diet_ai_app.db'); 
+    // console.log('Existing database deleted.');
+    
     db = await SQLite.openDatabaseAsync('diet_ai_app.db');
-    console.log('Database opened successfully.');
+    console.log('✅ Database opened successfully.');
     await db.execAsync(`PRAGMA journal_mode = WAL;`);
 
+    // user_info 테이블
     await db.runAsync(
       `CREATE TABLE IF NOT EXISTS user_info (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, -- AUTOINCREMENT 명시
         height REAL NOT NULL,
         weight REAL NOT NULL,
         target_weight REAL,
@@ -23,11 +30,12 @@ export const initDatabase = async () => {
         period TEXT
       );`
     );
-    console.log('User Info table created or already exists.');
+    console.log('✅ User Info table created or already exists.');
 
+    // exercises 테이블
     await db.runAsync(
       `CREATE TABLE IF NOT EXISTS exercises (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, -- AUTOINCREMENT 명시
         date TEXT NOT NULL,
         type TEXT NOT NULL,
         duration INTEGER,
@@ -41,29 +49,33 @@ export const initDatabase = async () => {
         weight REAL
       );`
     );
-    console.log('Exercises table created or already exists.');
+    console.log('✅ Exercises table created or already exists.');
 
+    // meals 테이블
     await db.runAsync(
       `CREATE TABLE IF NOT EXISTS meals (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, -- AUTOINCREMENT 명시
         date TEXT NOT NULL,
         type TEXT NOT NULL,
         food_name TEXT NOT NULL,
-        quantity REAL,
+        quantity TEXT, -- quantity는 텍스트로 저장될 수 있음 (예: "1개", "반碗")
         calories INTEGER,
         protein REAL,
         carbs REAL,
         fat REAL
       );`
     );
-    console.log('Meals table created or already exists.');
+    console.log('✅ Meals table created or already exists.');
 
     return db;
   } catch (error) {
-    console.error('Error initializing database:', error);
+    console.error('❌ Error initializing database:', error);
     throw error;
   }
 };
+
+// 이하 다른 함수들은 변경 없음 (addExercise, updateExerciseCalories, getExercises, deleteExercise, addMeal, updateMealCalories, getMeals, deleteMeal, setUserInfo, getUserInfo)
+// ... (이전에 제공된 나머지 코드 그대로 유지)
 
 /**
  * 운동 기록을 추가합니다.
@@ -83,7 +95,7 @@ export const addExercise = async (date, type, duration, calories, distance, incl
 };
 
 /**
- * AI가 계산한 칼로리 및 영양 성분을 업데이트합니다.
+ * AI가 계산한 운동 칼로리를 업데이트합니다.
  */
 export const updateExerciseCalories = async (exerciseId, calories) => {
   if (!db) throw new Error('Database not initialized.');
@@ -148,7 +160,7 @@ export const addMeal = async (date, type, food_name, quantity, calories, protein
 };
 
 /**
- * AI가 계산한 칼로리 및 영양 성분을 업데이트합니다.
+ * AI가 계산한 식사 칼로리 및 영양 성분을 업데이트합니다.
  */
 export const updateMealCalories = async (mealId, calories, protein, carbs, fat) => {
   if (!db) throw new Error('Database not initialized.');
@@ -207,14 +219,16 @@ export const setUserInfo = async (height, weight, targetWeight, gender, bodyType
         `UPDATE user_info SET height = ?, weight = ?, target_weight = ?, gender = ?, body_type = ?, goal = ?, period = ? WHERE id = ?;`,
         [height, weight, targetWeight, gender, bodyType, goal, period, existing.id]
       );
+      console.log('✅ User Info updated.');
     } else {
       await db.runAsync(
         `INSERT INTO user_info (height, weight, target_weight, gender, body_type, goal, period) VALUES (?, ?, ?, ?, ?, ?, ?);`,
         [height, weight, targetWeight, gender, bodyType, goal, period]
       );
+      console.log('✅ User Info inserted.');
     }
   } catch (error) {
-    console.error('Error saving user info:', error);
+    console.error('❌ Error saving user info:', error);
     throw error;
   }
 };
@@ -226,9 +240,14 @@ export const getUserInfo = async () => {
   if (!db) throw new Error('Database not initialized.');
   try {
     const result = await db.getFirstAsync(`SELECT * FROM user_info LIMIT 1;`);
+    if (result) {
+      console.log('✅ User Info loaded:', result);
+    } else {
+      console.log('ℹ️ No User Info found.');
+    }
     return result || null;
   } catch (error) {
-    console.error('Error getting user info:', error);
+    console.error('❌ Error getting user info:', error);
     throw error;
   }
 };

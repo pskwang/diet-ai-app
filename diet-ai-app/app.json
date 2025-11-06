@@ -2,6 +2,7 @@
   "expo": {
     "name": "diet-ai-app",
     "slug": "diet-ai-app",
+    "owner": "hwak8459",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,8 +16,9 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "jsEngine":"hermes",
-      "edgeToEdgeEnabled": true
+      "jsEngine": "hermes",
+      "edgeToEdgeEnabled": true,
+      "package": "com.psk00.dietaiapp"
     },
     "web": {
       "bundler": "metro",
@@ -38,6 +40,13 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "entryPoint": "./node_modules/expo-router/entry",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f1605568-274e-4401-ae01-9d3843cf2307"
+      }
     }
   }
 }

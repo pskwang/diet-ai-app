@@ -17,7 +17,7 @@ export default function ProfileInputScreen() {
   const genderOptions = ['남성', '여성'];
   const bodyTypeOptions = ['마름', '보통', '통통'];
   const goalOptions = ['다이어트', '벌크업', '유지'];
-  const periodOptions = ['3~4개월', '5~6개월', '7개월 이상'];
+  const periodOptions = ['1~2개월', '3~4개월', '5개월 이상'];
 
   const fetchCurrentInfo = async () => {
     try {

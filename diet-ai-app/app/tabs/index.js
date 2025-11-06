@@ -1,95 +1,65 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, Dimensions } from 'react-native';
-import { getUserInfo, getExercises, getMeals } from '../../src/db/database';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { getUserInfo } from '../../src/db/database';
 import { useFocusEffect } from 'expo-router';
-import { BarChart } from 'react-native-chart-kit'; 
-
-const screenWidth = Dimensions.get('window').width;
 
 export default function HomeScreen() {
   const [userInfo, setUserInfo] = useState(null);
-  const [exercises, setExercises] = useState([]);
-  const [meals, setMeals] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [chartData, setChartData] = useState({ labels: [], intake: [], burned: [], duration: [] });
+  const [exerciseRecommendation, setExerciseRecommendation] = useState("오늘도 건강한 하루를 위해 몸을 움직여 볼까요?");
+  // ✅ 칭찬/동기 부여 메시지 추가
+  const [motivationalMessage, setMotivationalMessage] = useState("오늘도 목표 달성을 향해 한 걸음 더 나아갔어요!");
+  // ✅ 건강 팁 배열 추가
+  const healthTips = [
+    "충분한 물 섭취는 신진대사를 활발하게 합니다! 💧",
+    "단백질은 근육 회복과 성장에 필수적이에요! 💪",
+    "매일 30분 걷기로 심혈관 건강을 지키세요! 🚶‍♀️",
+    "잠자리에 들기 2시간 전에는 스마트폰을 멀리하세요! 📵",
+    "다양한 채소와 과일로 비타민과 미네랄을 보충하세요! 🍎🥬",
+    "스트레칭은 유연성 향상과 부상 예방에 도움이 됩니다!🧘",
+  ];
+  const [randomTip, setRandomTip] = useState('');
 
-  const fetchAllData = async () => {
+  const fetchUserInfo = async () => {
     try {
       const user = await getUserInfo();
-      const fetchedExercises = await getExercises();
-      const fetchedMeals = await getMeals();
-
       setUserInfo(user);
-      setExercises(fetchedExercises);
-      setMeals(fetchedMeals);
       
-      processChartData(fetchedExercises, fetchedMeals); 
+      if (user) {
+        if (user.goal === '체중 감량') {
+          setExerciseRecommendation("체중 감량을 위해 유산소 운동(걷기, 조깅) 30분 어떠세요? 😊");
+        } else if (user.goal === '근육 증가') {
+          setExerciseRecommendation("근육 증가를 위해 스쿼트 3세트 12회, 푸쉬업 3세트 10회 추천해요! 💪");
+        } else if (user.goal === '건강 유지') {
+          setExerciseRecommendation("건강 유지를 위해 스트레칭과 가벼운 산책으로 활력을 찾아보세요! ✨");
+        } else {
+          setExerciseRecommendation("오늘도 건강한 하루를 위해 몸을 움직여 볼까요? 🤸");
+        }
+        setMotivationalMessage(`안녕하세요, ${user.name || '사용자'}님! 오늘도 목표 달성을 향해 한 걸음 더 나아갔어요!`);
+
+      } else {
+        setExerciseRecommendation("사용자 정보가 없습니다. '내 정보' 탭에서 목표를 설정해주세요!");
+        setMotivationalMessage("안녕하세요! '내 정보' 탭에서 프로필을 설정하고 목표를 시작해 보세요!");
+      }
+      
+      // ✅ 건강 팁 랜덤 선택
+      const randomIndex = Math.floor(Math.random() * healthTips.length);
+      setRandomTip(healthTips[randomIndex]);
 
     } catch (error) {
-      console.error('데이터 로드 오류:', error);
+      console.error('사용자 정보 로드 오류:', error);
+      setExerciseRecommendation("정보를 불러오는 데 문제가 발생했습니다. 😥");
+      setMotivationalMessage("정보를 불러오는 데 문제가 발생했습니다. 😥");
     } finally {
       setLoading(false);
     }
   };
-  
-  // 그래프 데이터 가공 함수
-  const processChartData = (exercises, meals) => {
-    const dataByDate = {};
-    const today = new Date();
-    
-    // 7일치 날짜 초기화 (최근 7일)
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const dateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      dataByDate[dateString] = { totalIntake: 0, totalBurned: 0, totalDuration: 0, label: d.getMonth() + 1 + '/' + d.getDate() };
-    }
-
-    // 운동 데이터 통합 (소모 칼로리)
-    exercises.forEach(e => {
-      if (dataByDate[e.date]) {
-        dataByDate[e.date].totalDuration += (e.duration || 0);
-        dataByDate[e.date].totalBurned += (e.calories || 0); 
-      }
-    });
-
-    // 식단 데이터 통합 (섭취 칼로리)
-    meals.forEach(m => {
-      if (dataByDate[m.date]) {
-        dataByDate[m.date].totalIntake += (m.calories || 0); 
-      }
-    });
-    
-    // 최종 차트 데이터 포맷
-    const dates = Object.keys(dataByDate).sort();
-    const finalChartData = {
-      labels: dates.map(date => dataByDate[date].label),
-      intake: dates.map(date => dataByDate[date].totalIntake), // 섭취 칼로리
-      burned: dates.map(date => dataByDate[date].totalBurned), // 소모 칼로리
-      duration: dates.map(date => dataByDate[date].totalDuration), // 순수 운동 시간
-    };
-    
-    setChartData(finalChartData);
-  };
 
   useFocusEffect(
     useCallback(() => {
-      fetchAllData();
+      fetchUserInfo();
     }, [])
   );
-
-  const getTodaysData = (data) => {
-    const today = new Date();
-    const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    return data.filter(item => item.date === dateString);
-  };
-
-  const todaysExercises = getTodaysData(exercises);
-  const todaysMeals = getTodaysData(meals);
-
-  const totalCalories = todaysMeals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
-  const totalExerciseCalories = todaysExercises.reduce((sum, exercise) => sum + (exercise.calories || 0), 0);
-  const totalExerciseDuration = todaysExercises.reduce((sum, exercise) => sum + (exercise.duration || 0), 0);
 
   if (loading) {
     return (
@@ -99,96 +69,38 @@ export default function HomeScreen() {
     );
   }
 
-  const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#ffffff',
-    backgroundGradientTo: '#ffffff',
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // 기본 라벨 색상
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    barPercentage: 0.5,
-    propsForLabels: {
-      fontSize: 10,
-    },
-  };
-  
-  // BarChart는 datasets에 여러 배열을 넣어 그룹 막대 차트를 구현합니다.
-  const calorieChartData = {
-    labels: chartData.labels,
-    datasets: [
-      {
-        data: chartData.intake, // 섭취 칼로리 (파란색)
-        color: (opacity = 1) => `rgba(255, 127, 80, ${opacity})`, // 주황색 (섭취)
-        legend: "섭취 (kcal)"
-      },
-      {
-        data: chartData.burned, // 소모 칼로리 (녹색)
-        color: (opacity = 1) => `rgba(46, 204, 113, ${opacity})`, // 초록색 (소모)
-        legend: "소모 (kcal)"
-      },
-    ],
-  };
-  
-  // 운동 시간 차트 데이터
-  const durationChartData = {
-    labels: chartData.labels,
-    datasets: [{
-        data: chartData.duration, 
-        color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`, // 파란색
-        legend: "운동 시간 (분)"
-    }]
-  };
-
-
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>안녕하세요!</Text>
-      {userInfo && (
-        <View style={styles.userInfoContainer}>
-          <Text style={styles.userInfoText}>키: {userInfo.height} cm</Text>
-          <Text style={styles.userInfoText}>몸무게: {userInfo.weight} kg</Text>
-          <Text style={styles.userInfoText}>목표: {userInfo.goal}</Text>
+      {/* ✅ 칭찬/동기 부여 섹션 */}
+      <View style={styles.motivationalSection}>
+        <Text style={styles.motivationalText}>{motivationalMessage}</Text>
+      </View>
+
+      {/* 운동 추천 섹션 */}
+      <View style={styles.recommendationSection}>
+        <Text style={styles.recommendationText}>{exerciseRecommendation}</Text>
+      </View>
+      
+      {/* ✅ 건강 팁/정보 카드 섹션 */}
+      {randomTip && (
+        <View style={styles.healthTipSection}>
+          <Text style={styles.healthTipTitle}>오늘의 건강 팁</Text>
+          <Text style={styles.healthTipText}>{randomTip}</Text>
         </View>
       )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>오늘의 기록</Text>
-        <Text style={styles.sectionContent}>
-          {todaysMeals.length > 0 ? `섭취 칼로리: ${totalCalories} kcal` : '오늘 식사 기록이 없습니다.'}
-        </Text>
-        <Text style={styles.sectionContent}>
-          {todaysExercises.length > 0 ? `운동 시간: ${totalExerciseDuration}분, 소모 칼로리: ${totalExerciseCalories} kcal` : '오늘 운동 기록이 없습니다.'}
-        </Text>
-      </View>
-      
-      {/* 🚨 주간 섭취 vs 소모 칼로리 그래프 (이중 막대) */}
-      <View style={styles.chartSection}>
-        <Text style={styles.sectionTitle}>주간 칼로리 비교</Text>
-        <BarChart
-          data={calorieChartData}
-          width={screenWidth - 40}
-          height={220}
-          chartConfig={chartConfig}
-          style={{ marginVertical: 8, borderRadius: 16 }}
-          yAxisLabel=""
-          yAxisSuffix="kcal"
-          // legend={["섭취 (kcal)", "소모 (kcal)"]} // 데이터셋에 legend를 정의했으므로 주석 처리
-        />
-      </View>
-      
-      {/* 🚨 주간 운동 시간 그래프 */}
-      <View style={styles.chartSection}>
-        <Text style={styles.sectionTitle}>주간 운동 시간 변화 (분)</Text>
-        <BarChart
-          data={durationChartData}
-          width={screenWidth - 40}
-          height={220}
-          chartConfig={chartConfig}
-          style={{ marginVertical: 8, borderRadius: 16 }}
-          yAxisLabel=""
-          yAxisSuffix="분"
-          
-        />
+      {/* 프로필 정보 섹션 */}
+      <View style={styles.profileSection}>
+        <Text style={styles.sectionTitle}>내 정보</Text>
+        {userInfo ? (
+          <>
+            <Text style={styles.profileText}>키: {userInfo.height} cm</Text>
+            <Text style={styles.profileText}>몸무게: {userInfo.weight} kg</Text>
+            <Text style={styles.profileText}>목표: {userInfo.goal}</Text>
+          </>
+        ) : (
+          <Text style={styles.profileText}>'내 정보' 탭에서 프로필을 입력해주세요.</Text>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -200,51 +112,101 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f5f5f5',
     alignItems: 'center',
+    justifyContent: 'flex-start', // 상단에 정렬 (스크롤 가능성 대비)
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  userInfoContainer: {
-    backgroundColor: '#e0e0e0',
+  // ✅ 칭찬/동기 부여 메시지 스타일
+  motivationalSection: {
+    backgroundColor: '#dff0d8', // 연한 초록색 배경
     padding: 15,
     borderRadius: 10,
-    marginBottom: 20,
-    width: '100%',
+    marginBottom: 25,
+    width: '95%',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  userInfoText: {
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  section: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    width: '100%',
-  },
-  chartSection: {
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 15,
-    width: '100%',
-    alignItems: 'center', // 차트 중앙 정렬
-  },
-  sectionTitle: {
+  motivationalText: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#3c763d', // 진한 초록색 텍스트
+    textAlign: 'center',
+  },
+  recommendationSection: {
+    backgroundColor: '#e6ffe6', // 부드러운 초록색 배경
+    padding: 25,
+    borderRadius: 15,
+    marginBottom: 25, // 추천 섹션과 팁 사이 간격
+    width: '95%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  recommendationText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#28a745', // 초록색 텍스트
+    textAlign: 'center',
+    lineHeight: 25,
+  },
+  // ✅ 건강 팁 섹션 스타일
+  healthTipSection: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 15,
+    marginBottom: 25, // 팁과 프로필 사이 간격
+    width: '95%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  healthTipTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6a0dad', // 보라색 제목
     marginBottom: 10,
   },
-  sectionContent: {
+  healthTipText: {
     fontSize: 16,
-    color: '#666',
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  profileSection: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 15,
+    width: '95%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  profileText: {
+    fontSize: 16,
+    color: '#555',
+    marginBottom: 8,
+    textAlign: 'center',
   },
 });
