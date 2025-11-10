@@ -1,255 +1,306 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, Text, StyleSheet, TextInput, Button, FlatList, 
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Linking, Image, TouchableOpacity
-} from 'react-native';
-import { 
-  getExercises, getMeals, getUserInfo, 
-  updateMealCalories, updateExerciseCalories 
-} from '../../../src/db/database';
-import { useFocusEffect } from 'expo-router';
+  import React, { useState, useEffect, useCallback } from 'react';
+  import { 
+    View, Text, StyleSheet, TextInput, Button, FlatList, 
+    KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Linking, Image, TouchableOpacity
+  } from 'react-native';
+  import AsyncStorage from '@react-native-async-storage/async-storage'; // ✅ 추가
+  import { 
+    getExercises, getMeals, getUserInfo, 
+    updateMealCalories, updateExerciseCalories 
+  } from '../../../src/db/database';
+  import { useFocusEffect } from 'expo-router';
+  import { initDatabase } from '../../../src/db/database';
 
-const SERVER_URL = "http://172.30.1.78:3000/api/chat";
+  const SERVER_URL = "http://10.191.107.204:3000/api/chat";
 
-// 🔹 평소 집에서 할 수 있는 운동 리스트
-const availableExercises = [
-  "스쿼트", "푸쉬업", "플랭크", "런지", "버피", "덤벨 컬", "벤치프레스", "랫풀다운",
-  "데드리프트", "사이드 레터럴 레이즈", "레그프레스", "암컬", "트라이셉스 익스텐션",
-  "크런치", "레그 레이즈", "플랭크 트위스트", "힙 브리지", "숄더 프레스", "케틀벨 스윙",
-  "스트레칭", "요가", "카프 스트레칭", "햄스트링 스트레칭", "어깨 스트레칭",
-  "러닝", "조깅", "싸이클링", "점핑잭", "하이니즈", "마운틴 클라이머", "로잉머신", "줄넘기", "스텝퍼", "에어로빅"
-];
+  // 🔹 운동 리스트
+  const availableExercises = [
+    "스쿼트", "푸쉬업", "푸시업", "플랭크", "런지", "버피", "덤벨 컬", "벤치프레스", "랫풀다운",
+    "데드리프트", "레그프레스", "크런치", "요가", "러닝", "런닝", "조깅", "싸이클링", "줄넘기", 
+    "렉","산책","줄넘기"
+  ];
 
-export default function ChatScreen() {
-  const [messages, setMessages] = useState([]);
-  const [inputText, setInputText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [userInfo, setUserInfo] = useState(null);
-  const [exercises, setExercises] = useState([]);
-  const [meals, setMeals] = useState([]);
+  export default function ChatScreen() {
+    const [messages, setMessages] = useState([]);
+    const [inputText, setInputText] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [userInfo, setUserInfo] = useState(null);
+    const [exercises, setExercises] = useState([]);
+    const [meals, setMeals] = useState([]);
 
-  const extractNutritionData = (responseText) => {
-    try {
-      const exerciseMatch = responseText.match(/\{[\s\S]*"exerciseId":\s*\d+[\s\S]*\}/);
-      const mealMatch = responseText.match(/\{[\s\S]*"fat":\s*\d+[\s\S]*\}/);
-      let jsonString = null;
-      if (exerciseMatch) jsonString = exerciseMatch[0];
-      else if (mealMatch) jsonString = mealMatch[0];
-      else {
-        const codeBlockMatch = responseText.match(/```json([\s\S]*?)```/);
-        if (codeBlockMatch) jsonString = codeBlockMatch[1];
+    const STORAGE_KEY = 'chatMessages';
+
+    // Hook 내에서 DB 초기화 + 데이터 로드
+    useEffect(() => {
+      const setup = async () => {
+        try {
+          await initDatabase();   // ✅ DB 초기화
+          await fetchUserData();  // ✅ DB 초기화 후 데이터 불러오기
+          await loadMessages();   // ✅ 메시지 불러오기
+        } catch (error) {
+          console.log('DB 초기화 또는 데이터 로드 실패:', error);
+        }
+      };
+      setup();
+    }, []);
+
+    // ...나머지 기존 코드 그대로
+  
+
+    // ✅ 메시지 저장
+    const saveMessages = async (msgs) => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
+      } catch (error) {
+        console.log('메시지 저장 실패', error);
       }
-      if (jsonString) {
-        const data = JSON.parse(jsonString.replace(/```json|```/g, '').trim());
-        if ((data.mealId || data.exerciseId) && typeof data.calories !== 'undefined') {
-          return data;
+    };
+
+    // ✅ 메시지 불러오기
+    const loadMessages = async () => {
+      try {
+        const storedMessages = await AsyncStorage.getItem(STORAGE_KEY);
+        if (storedMessages) {
+          setMessages(JSON.parse(storedMessages));
+        } else {
+          setMessages([
+            { id: '1', text: '🏋️ 안녕하세요! AI 코치입니다. 오늘의 목표를 달성할 준비 되셨나요?', sender: 'ai' },
+          ]);
+        }
+      } catch (error) {
+        console.log('메시지 불러오기 실패', error);
+      }
+    };
+
+    // 🔹 JSON 파싱
+    const extractNutritionData = (responseText) => {
+      try {
+        const match = responseText.match(/\{[\s\S]*"calories"[\s\S]*\}/);
+        if (match) return JSON.parse(match[0]);
+      } catch (e) {
+        console.log("❌ JSON 파싱 실패:", e);
+      }
+      return null;
+    };
+
+    // 🔹 데이터 로드
+    const fetchUserData = useCallback(async () => {
+      try {
+        const user = await getUserInfo();
+        const exercisesData = await getExercises();
+        const mealsData = await getMeals();
+        setUserInfo(user);
+        setExercises(exercisesData);
+        setMeals(mealsData);
+      } catch (error) {
+        Alert.alert("오류", "데이터 불러오기 실패");
+      }
+    }, []);
+
+    useEffect(() => { 
+      loadMessages(); // ✅ 메시지 불러오기
+      fetchUserData(); 
+    }, []);
+
+    useFocusEffect(useCallback(() => { fetchUserData(); }, [fetchUserData]));
+
+    // 🔹 목표 달성도 계산
+    const calculateGoalProgress = (userInfo, meals, exercises) => {
+      if (!userInfo) return null;
+      const today = new Date().toISOString().slice(0, 10);
+      const todaysMeals = meals.filter(m => m.date === today);
+      const todaysExercises = exercises.filter(e => e.date === today);
+      const totalIntake = todaysMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+      const totalBurn = todaysExercises.reduce((sum, e) => sum + (e.calories || 0), 0);
+      const intakeGoal = userInfo.goal_intake || 1800;
+      const burnGoal = userInfo.goal_burn || 500;
+
+      return {
+        totalIntake,
+        totalBurn,
+        intakeRate: Math.round(Math.min((totalIntake / intakeGoal) * 100, 100)),
+        burnRate: Math.round(Math.min((totalBurn / burnGoal) * 100, 100))
+      };
+    };
+
+    // 🔹 주간 리포트 계산
+    const calculateWeeklyReport = (meals, exercises) => {
+      const today = new Date();
+      let totalIntake = 0, totalBurn = 0, count = 0;
+
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateStr = date.toISOString().slice(0, 10);
+        const dayMeals = meals.filter(m => m.date === dateStr);
+        const dayExercises = exercises.filter(e => e.date === dateStr);
+        if (dayMeals.length || dayExercises.length) {
+          count++;
+          totalIntake += dayMeals.reduce((s, m) => s + (m.calories || 0), 0);
+          totalBurn += dayExercises.reduce((s, e) => s + (e.calories || 0), 0);
         }
       }
-    } catch (e) {
-      console.log("❌ JSON 파싱 실패:", e);
-    }
-    return null;
-  };
 
-  const fetchUserData = useCallback(async () => {
-    try {
-      const user = await getUserInfo();
-      const exercisesData = await getExercises();
-      const mealsData = await getMeals();
-      setUserInfo(user);
-      setExercises(exercisesData);
-      setMeals(mealsData);
+      const avgIntake = Math.round(totalIntake / count || 0);
+      const avgBurn = Math.round(totalBurn / count || 0);
+      return { avgIntake, avgBurn, days: count };
+    };
 
-      if (messages.length === 0) {
-        setMessages([
-          { id: '1', text: '안녕하세요! 저는 당신의 건강 목표 달성을 도와줄 AI 코치입니다. 무엇이든 물어보세요!', sender: 'ai' },
-        ]);
-      }
-    } catch (error) {
-      console.error("❌ 데이터 로드 오류:", error);
-      Alert.alert("오류", "데이터를 불러오는 중 문제가 발생했습니다.");
-    }
-  }, [messages]);
-
-  useEffect(() => { fetchUserData(); }, []);
-  useFocusEffect(useCallback(() => { fetchUserData(); }, [fetchUserData]));
-
-  const fetchRecommendedVideo = async (query) => {
-    try {
-      const response = await fetch(`${SERVER_URL.replace('/api/chat', '')}/api/video?query=${encodeURIComponent(query)}`);
-      const data = await response.json();
-      if (data?.url) {
-        setMessages(prev => [
-          ...prev,
-          {
+    // 🔹 운동 영상 (선택적)
+    const fetchRecommendedVideo = async (query) => {
+      try {
+        const response = await fetch(`${SERVER_URL.replace('/api/chat', '')}/api/video?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        if (data?.url) {
+          const videoMsg = {
             id: `video-${Date.now()}`,
             text: `🎥 ${data.title}`,
             thumbnail: data.thumbnail,
             url: data.url,
             sender: 'ai',
-          },
-        ]);
+          };
+          setMessages(prev => {
+            const updated = [...prev, videoMsg];
+            saveMessages(updated); // ✅ 메시지 저장
+            return updated;
+          });
+        }
+      } catch (error) {
+        console.log("❌ 영상 요청 실패:", error);
       }
-    } catch (error) {
-      console.error("❌ 영상 요청 실패:", error);
-    }
-  };
+    };
 
-  const sendAIRequestToServer = useCallback(async (prompt) => {
-    if (!SERVER_URL) { Alert.alert("오류", "서버 주소를 설정해주세요."); return null; }
-    if (!userInfo) return null;
-
-    try {
-      const requestBody = { model: "gpt-3.5-turbo", messages: [{ role: "user", content: prompt }] };
-      const apiResponse = await fetch(SERVER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
-
-      const responseData = await apiResponse.json();
-      let nutritionData = null;
-      if (apiResponse.ok && responseData.choices?.[0]?.message) {
-        const raw = responseData.choices[0].message.content;
-        nutritionData = extractNutritionData(raw);
+    // 🔹 AI 요청
+    const sendAIRequestToServer = useCallback(async (prompt) => {
+      try {
+        const body = { model: "gpt-3.5-turbo", messages: [{ role: "user", content: prompt }] };
+        const res = await fetch(SERVER_URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+        const data = await res.json();
+        const raw = data.choices?.[0]?.message?.content || "응답 없음";
+        const nutritionData = extractNutritionData(raw);
         let cleanedText = raw.replace(/```json[\s\S]*```/g, '').trim();
 
-        // 🔹 운동명 추출
         const exerciseRegex = new RegExp(availableExercises.join("|"), "i");
-        const matchedExercise = cleanedText.match(exerciseRegex);
-        if (matchedExercise) {
-          fetchRecommendedVideo(matchedExercise[0]);
-        } else {
-          // 🔹 운동명이 없으면 랜덤 추천
-          const shuffled = availableExercises.sort(() => 0.5 - Math.random());
-          const recommended = shuffled.slice(0, 5).join(", ");
-          cleanedText += `\n\n🏠 집에서 할 수 있는 운동 추천: ${recommended}`;
-        }
+        const matched = cleanedText.match(exerciseRegex);
+        if (matched) await fetchRecommendedVideo(matched[0]);
 
-        // ✅ DB 업데이트
-        if (nutritionData) {
-          if (nutritionData.mealId) {
-            const meal = meals.find(m => m.id === nutritionData.mealId);
-            const q = meal && !isNaN(parseFloat(meal.quantity)) ? parseFloat(meal.quantity) : 1;
-            await updateMealCalories(
-              nutritionData.mealId,
-              Math.round((nutritionData.calories || 0) * q),
-              Math.round((nutritionData.protein || 0) * q),
-              Math.round((nutritionData.carbs || 0) * q),
-              Math.round((nutritionData.fat || 0) * q)
-            );
-            cleanedText += `\n\n✅ [AI 분석 완료] 식단 기록이 갱신되었습니다.`;
-          } else if (nutritionData.exerciseId) {
-            const exercise = exercises.find(e => e.id === nutritionData.exerciseId);
-            const d = exercise && !isNaN(parseFloat(exercise.duration)) ? parseFloat(exercise.duration) : 1;
-            await updateExerciseCalories(
-              nutritionData.exerciseId,
-              Math.round((nutritionData.calories || 0) * d)
-            );
-            cleanedText += `\n\n✅ [AI 분석 완료] 운동 기록이 갱신되었습니다.`;
-          }
-          fetchUserData();
-        }
         return cleanedText;
+      } catch (e) {
+        console.log("❌ AI 요청 실패:", e);
+        return "⚠️ 서버 오류가 발생했습니다.";
       }
-    } catch (e) {
-      console.error("❌ AI 요청 오류:", e);
-      return '⚠️ 서버 연결 실패. 서버 실행 중인지 확인하세요.';
-    }
-  }, [userInfo, meals, exercises, fetchUserData]);
+    }, []);
 
+    // 🔹 메시지 전송
   const handleSendMessage = async () => {
-    if (inputText.trim() === '' || loading) return;
-    const userMessage = { id: Date.now().toString(), text: inputText, sender: 'user' };
-    setMessages(prev => [...prev, userMessage]);
+    if (!inputText.trim() || loading) return;
+    const userMsg = { id: Date.now().toString(), text: inputText, sender: 'user' };
+    setMessages(prev => {
+      const updated = [...prev, userMsg];
+      saveMessages(updated);
+      return updated;
+    });
     setInputText('');
     setLoading(true);
 
+    // 오늘 식단 텍스트 생성 (음식명 + 종류)
     const today = new Date().toISOString().slice(0, 10);
     const todaysMeals = meals.filter(m => m.date === today);
-    const todaysExercises = exercises.filter(e => e.date === today);
+    const todayMealsText = todaysMeals.map(m => `• ${m.type}: ${m.food_name}`).join('\n');
 
-    const mealsSummary = todaysMeals.map(m => `${m.food_name} ${m.quantity || 1}인분`).join(', ');
-    const exercisesSummary = todaysExercises.map(e => `${e.type} ${e.duration || 0}분`).join(', ');
+    // 목표/주간 리포트 계산
+    const goal = calculateGoalProgress(userInfo, meals, exercises);
+    const weekly = calculateWeeklyReport(meals, exercises);
 
-    const isMealAnalysisRequest = /(식단|먹은것|칼로리).*분석/.test(userMessage.text);
-
+    // AI 요청용 프롬프트
     let prompt = `
-      당신은 사용자의 건강 목표 달성을 돕는 전문 AI 코치입니다.
-      사용자 목표: ${userInfo?.goal || 'N/A'}
-      오늘의 식단: ${mealsSummary || '기록 없음'}
-      오늘의 운동: ${exercisesSummary || '기록 없음'}
-      사용자의 질문: "${userMessage.text}"
-    `;
+  당신은 개인 맞춤형 건강 코치입니다.
+  사용자 목표: ${userInfo?.goal || 'N/A'}
+  오늘 섭취 칼로리와 영양소를 계산하세요.
+  오늘 먹은 음식:
+  ${todayMealsText || '오늘 기록된 식단이 없습니다.'}
 
-    if (isMealAnalysisRequest && todaysMeals.length > 0) {
+  사용자 입력: "${inputText}"
+  `;
+
+    if (/(식단|먹은 것|칼로리).*분석/.test(inputText)) {
       prompt += `
-      위 식단 데이터를 기반으로 음식별 칼로리, 단백질, 탄수화물, 지방을 예측하고,
-      총 섭취 칼로리를 계산하세요.
-      각 음식에 대한 추정치와 총합을 표 형식 또는 리스트로 표시하세요.
-      `;
+  오늘의 식단 데이터를 기반으로 영양소(칼로리, 단백질, 탄수화물, 지방)를 분석하고,
+  부족하거나 과잉된 부분을 조언하세요.`;
     }
 
-    const aiResponseText = await sendAIRequestToServer(prompt);
-    if (aiResponseText) {
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: aiResponseText, sender: 'ai' }]);
+    if (/(루틴|운동 추천|운동 계획)/.test(inputText)) {
+      prompt += `
+  주간 운동 데이터를 고려해 다음 주에 적합한 루틴을 추천하세요.
+  (예: 유산소/무산소 균형, 근육 부위 분할 등)`;
     }
+
+    if (/(리포트|주간|분석)/.test(inputText)) {
+      prompt += `
+  최근 7일 데이터를 요약해 리포트를 작성하세요.
+  "이번 주 섭취량은 목표 대비 몇 %였는지", "운동이 부족한지" 등 분석하세요.`;
+    }
+
+    const aiText = await sendAIRequestToServer(prompt);
+    setMessages(prev => {
+      const updated = [...prev, { id: (Date.now() + 1).toString(), text: aiText, sender: 'ai' }];
+      saveMessages(updated);
+      return updated;
+    });
     setLoading(false);
   };
 
-  const renderMessage = ({ item }) => (
-    <View style={[styles.messageBubble, item.sender === 'user' ? styles.userMessage : styles.aiMessage]}>
-      <Text style={[styles.messageText, item.sender === 'ai' && styles.aiMessageText]}>{item.text}</Text>
-      {item.thumbnail && (
-        <TouchableOpacity onPress={() => Linking.openURL(item.url)}>
-          <Image
-            source={{ uri: item.thumbnail }}
-            style={{ width: 240, height: 135, borderRadius: 10, marginTop: 8 }}
-          />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
 
-  return (
-    <View style={styles.container}>
-      <FlatList 
-        data={messages} 
-        renderItem={renderMessage} 
-        keyExtractor={item => item.id} 
-        contentContainerStyle={styles.messageList}
-      />
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#007AFF"/>
-          <Text style={styles.loadingText}>AI 코치가 분석 중입니다...</Text>
-        </View>
-      )}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.inputContainer}>
-        <TextInput 
-          style={styles.input} 
-          value={inputText} 
-          onChangeText={setInputText} 
-          placeholder="메시지를 입력하세요 (예: 오늘 먹은 식단 분석해줘)" 
-          placeholderTextColor="#999"
-          editable={!loading}
+    const renderMessage = ({ item }) => (
+      <View style={[styles.messageBubble, item.sender === 'user' ? styles.userMsg : styles.aiMsg]}>
+        <Text style={[styles.msgText, item.sender === 'ai' && styles.aiText]}>{item.text}</Text>
+        {item.thumbnail && (
+          <TouchableOpacity onPress={() => Linking.openURL(item.url)}>
+            <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+
+    return (
+      <View style={styles.container}>
+        <FlatList 
+          data={messages} 
+          renderItem={renderMessage} 
+          keyExtractor={item => item.id} 
+          contentContainerStyle={styles.messageList}
         />
-        <Button title="보내기" onPress={handleSendMessage} disabled={loading}/>
-      </KeyboardAvoidingView>
-    </View>
-  );
-}
+        {loading && (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="small" color="#007AFF"/>
+            <Text style={styles.loadingText}>AI 코치가 분석 중...</Text>
+          </View>
+        )}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.inputBox}>
+          <TextInput 
+            style={styles.input} 
+            value={inputText} 
+            onChangeText={setInputText} 
+            placeholder="메시지를 입력하세요 (예: 주간 리포트 보여줘)"
+            placeholderTextColor="#999"
+          />
+          <Button title="보내기" onPress={handleSendMessage} disabled={loading}/>
+        </KeyboardAvoidingView>
+      </View>
+    );
+  }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f0f0f0' },
-  messageList: { paddingHorizontal: 10, paddingVertical: 20 },
-  messageBubble: { maxWidth: '80%', padding: 12, borderRadius: 15, marginBottom: 10 },
-  userMessage: { backgroundColor: '#007AFF', alignSelf: 'flex-end', borderTopRightRadius: 5 },
-  aiMessage: { backgroundColor: '#e0e0e0', alignSelf: 'flex-start', borderTopLeftRadius: 5 },
-  messageText: { color: '#fff', fontSize: 16 },
-  aiMessageText: { color: '#000' },
-  inputContainer: { flexDirection: 'row', padding: 10, backgroundColor: '#fff', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#ccc' },
-  input: { flex: 1, borderColor: '#ccc', borderWidth: 1, borderRadius: 20, paddingHorizontal: 15, height: 40, marginRight: 10, color:'#000' },
-  loadingContainer: { flexDirection:'row', alignItems:'center', padding:10, backgroundColor: '#e6f7ff', borderTopWidth: 1, borderTopColor: '#cceeff' },
-  loadingText: { marginLeft:8, color:'#007AFF' },
-});
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#f6f6f6' },
+    messageList: { padding: 15 },
+    messageBubble: { padding: 12, borderRadius: 15, marginBottom: 10, maxWidth: '85%' },
+    userMsg: { backgroundColor: '#007AFF', alignSelf: 'flex-end', borderTopRightRadius: 5 },
+    aiMsg: { backgroundColor: '#e6e6e6', alignSelf: 'flex-start', borderTopLeftRadius: 5 },
+    msgText: { color: '#fff', fontSize: 15 },
+    aiText: { color: '#000' },
+    inputBox: { flexDirection: 'row', padding: 10, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#ccc' },
+    input: { flex: 1, borderColor: '#ccc', borderWidth: 1, borderRadius: 20, paddingHorizontal: 15, height: 40, marginRight: 10, color:'#000' },
+    loadingBox: { flexDirection:'row', alignItems:'center', padding:10, backgroundColor:'#e8f5ff', borderTopWidth:1, borderTopColor:'#cceeff' },
+    loadingText: { marginLeft:8, color:'#007AFF' },
+    thumbnail: { width: 240, height: 135, borderRadius: 10, marginTop: 8 },
+  });

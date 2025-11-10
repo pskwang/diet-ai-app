@@ -1,15 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { getUserInfo } from '../../src/db/database';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons'; // 아이콘 사용
 
 export default function HomeScreen() {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [exerciseRecommendation, setExerciseRecommendation] = useState("오늘도 건강한 하루를 위해 몸을 움직여 볼까요?");
-  // ✅ 칭찬/동기 부여 메시지 추가
-  const [motivationalMessage, setMotivationalMessage] = useState("오늘도 목표 달성을 향해 한 걸음 더 나아갔어요!");
-  // ✅ 건강 팁 배열 추가
+  const [exerciseRecommendation, setExerciseRecommendation] = useState(
+    "오늘도 건강한 하루를 위해 몸을 움직여 볼까요?"
+  );
+  const [motivationalMessage, setMotivationalMessage] = useState(
+    "오늘도 목표 달성을 향해 한 걸음 더 나아갔어요!"
+  );
+
   const healthTips = [
     "충분한 물 섭취는 신진대사를 활발하게 합니다! 💧",
     "단백질은 근육 회복과 성장에 필수적이에요! 💪",
@@ -20,11 +25,18 @@ export default function HomeScreen() {
   ];
   const [randomTip, setRandomTip] = useState('');
 
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem('userToken');
+    router.replace('/login'); // 로그인 화면으로 이동
+  };
+
   const fetchUserInfo = async () => {
     try {
       const user = await getUserInfo();
       setUserInfo(user);
-      
+
       if (user) {
         if (user.goal === '체중 감량') {
           setExerciseRecommendation("체중 감량을 위해 유산소 운동(걷기, 조깅) 30분 어떠세요? 😊");
@@ -32,20 +44,16 @@ export default function HomeScreen() {
           setExerciseRecommendation("근육 증가를 위해 스쿼트 3세트 12회, 푸쉬업 3세트 10회 추천해요! 💪");
         } else if (user.goal === '건강 유지') {
           setExerciseRecommendation("건강 유지를 위해 스트레칭과 가벼운 산책으로 활력을 찾아보세요! ✨");
-        } else {
-          setExerciseRecommendation("오늘도 건강한 하루를 위해 몸을 움직여 볼까요? 🤸");
         }
-        setMotivationalMessage(`안녕하세요, ${user.name || '사용자'}님! 오늘도 목표 달성을 향해 한 걸음 더 나아갔어요!`);
 
+        setMotivationalMessage(`안녕하세요, ${user.name || '사용자'}님! 오늘도 목표 달성을 향해 한 걸음 더 나아갔어요!`);
       } else {
         setExerciseRecommendation("사용자 정보가 없습니다. '내 정보' 탭에서 목표를 설정해주세요!");
         setMotivationalMessage("안녕하세요! '내 정보' 탭에서 프로필을 설정하고 목표를 시작해 보세요!");
       }
-      
-      // ✅ 건강 팁 랜덤 선택
+
       const randomIndex = Math.floor(Math.random() * healthTips.length);
       setRandomTip(healthTips[randomIndex]);
-
     } catch (error) {
       console.error('사용자 정보 로드 오류:', error);
       setExerciseRecommendation("정보를 불러오는 데 문제가 발생했습니다. 😥");
@@ -71,7 +79,14 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ✅ 칭찬/동기 부여 섹션 */}
+      {/* 헤더: 오른쪽 상단에 로그아웃 아이콘 */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <Ionicons name="log-out-outline" size={28} color="#007AFF" />
+        </TouchableOpacity>
+      </View>
+
+      {/* 칭찬/동기 부여 섹션 */}
       <View style={styles.motivationalSection}>
         <Text style={styles.motivationalText}>{motivationalMessage}</Text>
       </View>
@@ -80,8 +95,8 @@ export default function HomeScreen() {
       <View style={styles.recommendationSection}>
         <Text style={styles.recommendationText}>{exerciseRecommendation}</Text>
       </View>
-      
-      {/* ✅ 건강 팁/정보 카드 섹션 */}
+
+      {/* 건강 팁 섹션 */}
       {randomTip && (
         <View style={styles.healthTipSection}>
           <Text style={styles.healthTipTitle}>오늘의 건강 팁</Text>
@@ -112,16 +127,26 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f5f5f5',
     alignItems: 'center',
-    justifyContent: 'flex-start', // 상단에 정렬 (스크롤 가능성 대비)
+    justifyContent: 'flex-start',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // ✅ 칭찬/동기 부여 메시지 스타일
+  header: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'flex-end', // 오른쪽 정렬
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#f5f5f5',
+  },
+  logoutButton: {
+    padding: 5,
+  },
   motivationalSection: {
-    backgroundColor: '#dff0d8', // 연한 초록색 배경
+    backgroundColor: '#dff0d8',
     padding: 15,
     borderRadius: 10,
     marginBottom: 25,
@@ -136,14 +161,14 @@ const styles = StyleSheet.create({
   motivationalText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#3c763d', // 진한 초록색 텍스트
+    color: '#3c763d',
     textAlign: 'center',
   },
   recommendationSection: {
-    backgroundColor: '#e6ffe6', // 부드러운 초록색 배경
+    backgroundColor: '#e6ffe6',
     padding: 25,
     borderRadius: 15,
-    marginBottom: 25, // 추천 섹션과 팁 사이 간격
+    marginBottom: 25,
     width: '95%',
     alignItems: 'center',
     shadowColor: '#000',
@@ -155,16 +180,15 @@ const styles = StyleSheet.create({
   recommendationText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#28a745', // 초록색 텍스트
+    color: '#28a745',
     textAlign: 'center',
     lineHeight: 25,
   },
-  // ✅ 건강 팁 섹션 스타일
   healthTipSection: {
     backgroundColor: '#fff',
     padding: 20,
     borderRadius: 15,
-    marginBottom: 25, // 팁과 프로필 사이 간격
+    marginBottom: 25,
     width: '95%',
     alignItems: 'center',
     shadowColor: '#000',
@@ -176,7 +200,7 @@ const styles = StyleSheet.create({
   healthTipTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#6a0dad', // 보라색 제목
+    color: '#6a0dad',
     marginBottom: 10,
   },
   healthTipText: {
