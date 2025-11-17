@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Button, Alert, TouchableOpacity } from 'react-native';
-import { getExercises, deleteExercise } from '../../../src/db/database';
+import { View, Text, FlatList, StyleSheet, Button, Alert } from 'react-native';
+import { getExercises, deleteExercise, initDatabase } from '../../../src/db/database'; // ✅ initDatabase 추가
 import { useFocusEffect, Link } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
 
@@ -10,6 +10,9 @@ export default function ExerciseListScreen() {
 
   const fetchExercises = async () => {
     try {
+      // ✅ DB 초기화 먼저 수행
+      await initDatabase();
+
       const fetched = await getExercises();
       setExercises(fetched);
     } catch (error) {
@@ -50,15 +53,14 @@ export default function ExerciseListScreen() {
     );
   };
 
-  const onDayPress = (day) => {
-    setSelectedDate(day.dateString);
-  };
+  const onDayPress = (day) => setSelectedDate(day.dateString);
 
-  const filteredExercises = exercises.filter(exercise => exercise.date === selectedDate);
+  const filteredExercises = exercises.filter(
+    (exercise) => exercise.date === selectedDate
+  );
 
   const renderItem = ({ item }) => {
-    let details;
-    // 운동 종류에 따라 다른 상세 정보를 표시합니다.
+    let details = '';
     if (item.type === '산책') {
       details = `지속 시간: ${item.duration}분, 거리: ${item.distance}km, 소모 칼로리: ${item.calories}kcal`;
     } else if (item.type === '런닝머신') {
@@ -67,7 +69,7 @@ export default function ExerciseListScreen() {
       details = `지속 시간: ${item.duration}분, 레벨: ${item.level}, 소모 칼로리: ${item.calories}kcal`;
     } else if (item.type === '줄넘기') {
       details = `지속 시간: ${item.duration}분, 총 개수: ${item.reps}회, 소모 칼로리: ${item.calories}kcal`;
-    } else { // 무산소 운동
+    } else {
       details = `세트: ${item.sets}, 반복: ${item.reps}회, 무게: ${item.weight}kg, 소모 칼로리: ${item.calories}kcal`;
     }
 
@@ -88,7 +90,11 @@ export default function ExerciseListScreen() {
       <Calendar
         onDayPress={onDayPress}
         markedDates={{
-          [selectedDate]: { selected: true, disableTouchEvent: true, selectedDotColor: 'orange' }
+          [selectedDate]: {
+            selected: true,
+            disableTouchEvent: true,
+            selectedDotColor: 'orange',
+          },
         }}
       />
       <View style={styles.addButtonContainer}>
@@ -96,7 +102,9 @@ export default function ExerciseListScreen() {
           <Button title="운동 기록 추가" />
         </Link>
       </View>
-      {selectedDate && <Text style={styles.recordTitle}>{selectedDate} 운동 기록</Text>}
+      {selectedDate && (
+        <Text style={styles.recordTitle}>{selectedDate} 운동 기록</Text>
+      )}
       {filteredExercises.length === 0 ? (
         <Text style={styles.emptyText}>선택한 날짜에 운동 기록이 없습니다.</Text>
       ) : (
@@ -112,14 +120,8 @@ export default function ExerciseListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 10,
-    backgroundColor: '#f9f9f9',
-  },
-  listContent: {
-    paddingBottom: 20,
-  },
+  container: { flex: 1, padding: 10, backgroundColor: '#f9f9f9' },
+  listContent: { paddingBottom: 20 },
   itemContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -134,29 +136,9 @@ const styles = StyleSheet.create({
     shadowRadius: 1.41,
     elevation: 2,
   },
-  itemDate: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 5,
-  },
-  itemText: {
-    fontSize: 16,
-    marginBottom: 3,
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 16,
-    color: '#888',
-  },
-  addButtonContainer: {
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  recordTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
+  itemDate: { fontSize: 14, color: '#888', marginBottom: 5 },
+  itemText: { fontSize: 16, marginBottom: 3 },
+  emptyText: { textAlign: 'center', marginTop: 20, fontSize: 16, color: '#888' },
+  addButtonContainer: { marginTop: 20, marginBottom: 20 },
+  recordTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
 });

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { setUserInfo } from '../src/db/database';
+import { initDatabase, setUserInfo } from '../src/db/database'; // ✅ initDatabase 추가
 
 export default function OnboardingScreen() {
   const [height, setHeight] = useState('');
@@ -17,7 +17,20 @@ export default function OnboardingScreen() {
   const genderOptions = ['남성', '여성'];
   const bodyTypeOptions = ['마름', '보통', '통통'];
   const goalOptions = ['다이어트', '벌크업', '유지'];
-  const periodOptions = ['1개월 미만', '3~5개월', '7개월 이상']; // ✨ 수정된 부분 ✨
+  const periodOptions = ['1개월 미만', '3~5개월', '7개월 이상'];
+
+  // ✅ 앱 로드 시 DB 초기화
+  useEffect(() => {
+    const setupDB = async () => {
+      try {
+        await initDatabase();
+        console.log('✅ DB initialized on OnboardingScreen');
+      } catch (error) {
+        console.error('❌ DB init failed on OnboardingScreen:', error);
+      }
+    };
+    setupDB();
+  }, []);
 
   const handleSave = async () => {
     if (!height || !weight || !targetWeight || !selectedGender || !selectedBodyType || !selectedGoal || !selectedPeriod) {
@@ -53,7 +66,12 @@ export default function OnboardingScreen() {
           ]}
           onPress={() => setOption(option)}
         >
-          <Text style={[styles.optionButtonText, selectedOption === option && styles.selectedOptionText]}>
+          <Text
+            style={[
+              styles.optionButtonText,
+              selectedOption === option && styles.selectedOptionText,
+            ]}
+          >
             {option}
           </Text>
         </TouchableOpacity>
@@ -64,7 +82,7 @@ export default function OnboardingScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>당신의 다이어트 목표를 설정해주세요!</Text>
-      
+
       <Text style={styles.label}>키 (cm):</Text>
       <TextInput
         style={styles.input}
@@ -73,7 +91,7 @@ export default function OnboardingScreen() {
         onChangeText={setHeight}
         placeholder="예: 175"
       />
-      
+
       <Text style={styles.label}>몸무게 (kg):</Text>
       <TextInput
         style={styles.input}
@@ -91,13 +109,13 @@ export default function OnboardingScreen() {
         onChangeText={setTargetWeight}
         placeholder="예: 65"
       />
-      
+
       <Text style={styles.label}>성별:</Text>
       {renderOptionButtons(genderOptions, selectedGender, setSelectedGender)}
 
       <Text style={styles.label}>체형:</Text>
       {renderOptionButtons(bodyTypeOptions, selectedBodyType, setSelectedBodyType)}
-      
+
       <Text style={styles.label}>목표:</Text>
       {renderOptionButtons(goalOptions, selectedGoal, setSelectedGoal)}
 
