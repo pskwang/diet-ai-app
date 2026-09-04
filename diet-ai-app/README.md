@@ -1,50 +1,78 @@
-# Welcome to your Expo app 👋
+# Diet AI App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+AI 코치와 대화하며 식단·운동을 기록하고 관리하는 개인 다이어트 관리 앱입니다.
+React Native(Expo) 프론트엔드와 Node.js/Express 백엔드로 구성된 풀스택 프로젝트이며, 졸업과제로 시작해 개인적으로 계속 다듬고 있습니다.
 
-## Get started
+## 주요 기능
 
-1. Install dependencies
+- **AI 코치 채팅**: 오늘의 식단·운동 데이터를 기반으로 맞춤형 조언, 칼로리 분석, 주간 리포트, 운동 루틴 추천을 받을 수 있습니다.
+- **식단 기록**: 끼니별 음식과 칼로리·영양소(단백질/탄수화물/지방)를 기록합니다.
+- **운동 기록**: 운동 종류, 세트/횟수, 소모 칼로리 등을 기록합니다.
+- **운동 영상 추천**: AI 응답에서 언급된 운동에 맞춰 YouTube 영상을 자동으로 찾아 보여줍니다.
+- **온보딩 & 프로필**: 신체 정보와 목표(체중 감량/근력 향상 등)를 설정합니다.
+- **로그인/회원가입**: 이메일 기반 계정 관리 (비밀번호는 bcrypt로 해싱하여 저장).
 
-   ```bash
-   npm install
-   ```
+## 기술 스택
 
-2. Start the app
+**Frontend**
+- React Native (Expo, expo-router 기반 파일 라우팅)
+- expo-sqlite (로컬 데이터 저장)
+- react-native-chart-kit, react-native-calendars
 
-   ```bash
-   npx expo start
-   ```
+**Backend**
+- Node.js / Express
+- OpenAI API (GPT 기반 코칭 응답 생성)
+- YouTube Data API (운동 영상 검색)
+- bcryptjs (비밀번호 해싱)
 
-In the output, you'll find options to open the app in a
+## 아키텍처
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+┌─────────────────────┐         ┌──────────────────────┐
+│   React Native 앱    │  HTTP   │   Express 서버        │
+│  (화면 렌더링 전용)   │ ──────▶ │ (프롬프트 조립 · 의도  │
+│                      │         │  분류 · OpenAI 호출)  │
+│  로컬 SQLite         │         │                      │
+│  (식단/운동/유저 데이터)│         │  ── OpenAI API       │
+└─────────────────────┘         │  ── YouTube API       │
+                                 └──────────────────────┘
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+초기 버전에서는 AI 프롬프트 조립·의도 분류(정규식 기반) 로직이 전부 프론트엔드에 있었고, 서버는 요청을 그대로 OpenAI로 전달하는 단순 프록시 역할만 했습니다.
 
-## Learn more
+**리팩터링을 통해 다음과 같이 책임을 분리했습니다:**
+- **프론트엔드**: 사용자 입력과 로컬 DB에서 계산한 데이터(오늘 식단, 목표 달성률, 주간 통계)만 서버로 전송하고, 응답을 화면에 표시하는 역할만 담당
+- **백엔드**: 프롬프트 조립, 사용자 의도 분류(식단 분석/운동 추천/주간 리포트 등), OpenAI 호출, 응답 파싱을 전담
 
-To learn more about developing your project with Expo, look at the following resources:
+이렇게 분리한 이유:
+1. **일관성** — 프롬프트 로직이 한 곳에 있어 앱 재배포 없이 서버만 수정하면 튜닝 가능
+2. **확장성** — 추후 웹 등 다른 클라이언트를 추가해도 프롬프트 로직을 재사용 가능
+3. **관심사 분리** — 클라이언트는 UI, 서버는 비즈니스 로직이라는 일반적인 설계 원칙에 부합
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 실행 방법
 
-## Join the community
+### Frontend
+```bash
+cd diet-ai-app
+npm install
+npx expo start
+```
 
-Join our community of developers creating universal apps.
+### Backend
+```bash
+cd diet-ai-server
+npm install
+# .env 파일에 CHATGPT_API_KEY, YOUTUBE_API_KEY 설정
+node server.js
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 보안 고려사항
+
+- 비밀번호는 평문 저장이 아닌 bcrypt 해싱으로 저장합니다.
+- OpenAI/YouTube API 키는 `.env`로 서버에만 보관하며 클라이언트에 노출하지 않습니다.
+
+## 향후 개선 사항
+
+- [ ] `/api/chat`, `/api/video` 엔드포인트에 인증(API 키 또는 JWT) 추가
+- [ ] 서버 측 DB(Postgres 등) 도입으로 다중 사용자 지원
+- [ ] 로그인 세션 관리 (현재는 로컬 DB 기반 단일 사용자 가정)
