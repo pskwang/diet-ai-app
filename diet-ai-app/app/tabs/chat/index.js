@@ -5,20 +5,14 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
-  getExercises, getMeals, getUserInfo, 
-  updateMealCalories, updateExerciseCalories 
+  getExercises, getMeals, getUserInfo 
 } from '../../../src/db/database';
 import { useFocusEffect } from 'expo-router';
 import { initDatabase } from '../../../src/db/database';
 
 const SERVER_URL = "http://10.191.107.204:3000/api/chat";
 
-// 🔹 운동 리스트
-const availableExercises = [
-  "스쿼트","푸쉬업","푸시업","플랭크","런지","버피","덤벨 컬","벤치프레스","랫풀다운",
-  "데드리프트","레그프레스","크런치","요가","러닝","런닝","조깅","싸이클링","줄넘기",
-  "렉","산책","줄넘기"
-];
+
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState([]);
@@ -193,24 +187,20 @@ export default function ChatScreen() {
   };
 
   // 🔹 AI 요청
-  const sendAIRequestToServer = useCallback(async (prompt) => {
-    try {
-      const body = { model: "gpt-3.5-turbo", messages: [{ role: "user", content: prompt }] };
-      const res = await fetch(SERVER_URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
-      const data = await res.json();
-      const raw = data.choices?.[0]?.message?.content || "응답 없음";
-      let cleanedText = raw.replace(/```json[\s\S]*```/g, '').trim();
+const sendAIRequestToServer = useCallback(async (text, info, todaysMealsArg, goalArg, weeklyArg) => {
+  try {
+    const body = { inputText: text, userInfo: info, todaysMeals: todaysMealsArg, goal: goalArg, weekly: weeklyArg };
+    const res = await fetch(SERVER_URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
 
-      const exerciseRegex = new RegExp(availableExercises.join("|"), "i");
-      const matched = cleanedText.match(exerciseRegex);
-      if (matched) await fetchRecommendedVideo(matched[0]);
+    if (data.matchedExercise) await fetchRecommendedVideo(data.matchedExercise);
 
-      return cleanedText;
-    } catch (e) {
-      console.log("❌ AI 요청 실패:", e);
-      return "⚠️ 서버 오류가 발생했습니다.";
-    }
-  }, []);
+    return data.text || "⚠️ 응답 오류";
+  } catch (e) {
+    console.log("❌ AI 요청 실패:", e);
+    return "⚠️ 서버 오류가 발생했습니다.";
+  }
+}, []);
 
   // 🔹 메시지 전송
   const handleSendMessage = async () => {
@@ -227,84 +217,13 @@ export default function ChatScreen() {
     const goal = calculateGoalProgress(userInfo, meals, exercises);
     const weekly = calculateWeeklyReport(meals, exercises);
 
-    let prompt = `
-당신은 개인 맞춤형 건강 코치입니다.
-사용자 목표: ${userInfo?.goal || 'N/A'}
-오늘 섭취 칼로리와 영양소를 계산하세요.
-오늘 먹은 음식:
-${todayMealsText || '오늘 기록된 식단이 없습니다.'}
-
-사용자 입력: "${inputText}"
-`;
-
-    if (/(식단|먹은 것|칼로리).*분석/.test(inputText)) {
-      prompt += `
-오늘의 식단 데이터를 기반으로 영양소(칼로리, 단백질, 탄수화물, 지방)를 분석하고,
-부족하거나 과잉된 부분을 조언하세요.`;
+    // 🔹 스트레칭 영상 추천 (운동추천 요청 시)
+    if (/운동추천/.test(inputText)) {
+      await fetchRecommendedVideo("스트레칭");
     }
 
-    if (inputText.includes("오늘")) {
-      prompt += `
-오늘 날짜(${today}) 기준으로 사용자의 식단과 운동 데이터를 분석하세요.
-• 오늘 섭취 칼로리: ${goal?.totalIntake || 0} kcal
-• 오늘 소모 칼로리: ${goal?.totalBurn || 0} kcal
-• 오늘 식단 내역:
-${todayMealsText || "- 기록 없음"}
-
-오늘 데이터만을 기준으로 결과와 조언을 작성하세요.
-`;
-    }
-
-    if (/(루틴|운동 계획)/.test(inputText)) {
-      prompt += `
-주간 운동 데이터를 고려해 다음 주에 적합한 루틴을 추천하세요.
-(예: 유산소/무산소 균형, 근육 부위 분할 등)`;
-    }
-
-     if (/운동추천/.test(inputText)) {
-  // 1️⃣ 랜덤 운동 텍스트 생성
-  const homeExercises = [
-   "스쿼트","푸쉬업","푸시업","플랭크","런지","버피","덤벨 컬","벤치프레스","랫풀다운",
-  "데드리프트","레그프레스","크런치","요가","러닝","런닝","조깅","싸이클링","줄넘기",
-  "렉","산책","줄넘기"
-  ];
-  const shuffled = homeExercises.sort(() => 0.5 - Math.random());
-  const selected = shuffled.slice(0, 5);
-  prompt += `
-🏡 집에서 할 수 있는 운동 추천: ${selected.join(", ")}`;
-
-  // 2️⃣ 스트레칭 영상 추천
-  try {
-    const stretchQuery = "스트레칭";
-    const response = await fetch(`${SERVER_URL.replace('/api/chat', '')}/api/video?query=${encodeURIComponent(stretchQuery)}`);
-    const data = await response.json();
-    if (data?.url) {
-      const videoMsg = {
-        id: `video-${Date.now()}`,
-        text: `🧘 스트레칭 영상: ${data.title}`,
-        thumbnail: data.thumbnail,
-        url: data.url,
-        sender: 'ai',
-      };
-      setMessages(prev => {
-        const updated = [...prev, videoMsg];
-        saveMessages(updated);
-        return updated;
-      });
-    }
-  } catch (error) {
-    console.log("❌ 스트레칭 영상 요청 실패:", error);
-  }
-}
-
-
-    if (/(리포트|주간|분석)/.test(inputText)) {
-      prompt += `
-최근 7일 데이터를 요약해 리포트를 작성하세요.
-"이번 주 섭취량은 목표 대비 몇 %였는지", "운동이 부족한지" 등 분석하세요.`;
-    }
-
-    const aiText = await sendAIRequestToServer(prompt);
+    // 🔹 프롬프트 조립·의도 분류는 서버가 처리 — 원본 데이터만 전송
+    const aiText = await sendAIRequestToServer(inputText, userInfo, todaysMeals, goal, weekly);
     setMessages(prev => { const updated = [...prev, { id: (Date.now() + 1).toString(), text: aiText, sender: 'ai' }]; saveMessages(updated); return updated; });
     setLoading(false);
   };

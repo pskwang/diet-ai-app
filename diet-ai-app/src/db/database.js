@@ -1,4 +1,5 @@
 // src/db/database.js
+import bcrypt from 'bcryptjs';
 import * as SQLite from 'expo-sqlite';
 
 let db = null; // 데이터베이스 연결 객체
@@ -173,10 +174,10 @@ export const deleteMeal = async (id) => {
 /* ------------------ 유저 관리 ------------------ */
 export const addUser = async (email, password) => {
   checkDbInitialized();
-  // 가입 전 중복 확인
   const existing = await getUserByEmail(email);
   if (existing) throw new Error('이미 등록된 이메일입니다.');
-  const result = await db.runAsync(`INSERT INTO users (email,password) VALUES (?,?);`, [email,password]);
+  const passwordHash = bcrypt.hashSync(password, 10); // 여기서 해싱
+  const result = await db.runAsync(`INSERT INTO users (email,password) VALUES (?,?);`, [email,passwordHash]);
   return result.lastInsertRowId;
 };
 
